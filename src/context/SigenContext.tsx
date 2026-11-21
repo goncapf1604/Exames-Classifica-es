@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { INITIAL_SIGEN_STATE, SigenState } from '../data/seedData';
 import { getScreenDef } from '../data/screensCatalog';
 import {
@@ -9,8 +9,11 @@ import {
   UserAccount,
 } from '../types/sigen';
 import { nowIso } from '../utils/exports';
+import { SyncEngine, SyncStatus } from '../sync/engine';
+import { CLASSIFICACOES_BINDINGS, CLASSIFICACOES_REGISTOS_FILTER } from '../sync/bindings';
+import { SIGEN_SUPABASE_KEY, SIGEN_SUPABASE_URL, SIGEN_SYNC_ENABLED } from '../sync/config';
 
-const STORAGE_KEY = 'sigen_classificacoes_state_v2';
+const STORAGE_KEY = 'sigen_classificacoes_state_v3';
 const SESSION_KEY = 'sigen_classificacoes_session_v3';
 
 export interface ToastMessage {
@@ -65,6 +68,9 @@ interface SigenContextValue {
   resetDemoData: () => void;
   isPhaseClosed: boolean;
   refreshSync: () => void;
+  /** Estado da ligação à base de dados partilhada SIGEN. */
+  syncStatus: SyncStatus;
+  syncDetail?: string;
 }
 
 const SigenContext = createContext<SigenContextValue | null>(null);
@@ -90,7 +96,7 @@ export const SigenProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   });
 
-  const [activeInstitutionId, setActiveInstitutionIdState] = useState<string>('inst-aeidh');
+  const [activeInstitutionId, setActiveInstitutionIdState] = useState<string>('inst-esc-1');
   const [activeYear, setActiveYear] = useState<string>('2025/2026');
   const [activePhase, setActivePhase] = useState<'1.ª Fase' | '2.ª Fase' | 'Época Especial'>('1.ª Fase');
   const [activeScreen, setActiveScreen] = useState<ScreenId>(() =>
@@ -107,6 +113,35 @@ export const SigenProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch {
       // Ignore quota issues
     }
+  }, [state]);
+
+  // --- Sincronização com a base de dados partilhada (SIGEN Exames + SIGEN Classificações) ---
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(SIGEN_SYNC_ENABLED ? 'a ligar' : 'desligado');
+  const [syncDetail, setSyncDetail] = useState<string | undefined>();
+  const syncRef = useRef<SyncEngine<SigenState> | null>(null);
+
+  useEffect(() => {
+    if (!SIGEN_SYNC_ENABLED) return;
+    const engine = new SyncEngine<SigenState>(
+      { url: SIGEN_SUPABASE_URL, key: SIGEN_SUPABASE_KEY },
+      CLASSIFICACOES_BINDINGS,
+      (updater) => setState((prev) => ({ ...updater(prev), lastSyncAt: nowIso() })),
+      (status, detail) => {
+        setSyncStatus(status);
+        setSyncDetail(detail);
+      },
+      CLASSIFICACOES_REGISTOS_FILTER
+    );
+    syncRef.current = engine;
+    void engine.start();
+    return () => {
+      engine.stop();
+      syncRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    syncRef.current?.notifyLocalChange(state);
   }, [state]);
 
   useEffect(() => {
@@ -164,7 +199,7 @@ export const SigenProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const newLog: AuditLog = {
       id: `aud-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
       dataHora: nowIso(),
-      institutionId: activeInstitution?.id || currentUser.escolasIds[0] || 'inst-aeidh',
+      institutionId: activeInstitution?.id || currentUser.escolasIds[0] || 'inst-esc-1',
       utilizador: currentUser.nome,
       perfil: currentUser.perfil,
       ...entry,
@@ -364,6 +399,8 @@ export const SigenProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         resetDemoData,
         isPhaseClosed,
         refreshSync,
+        syncStatus,
+        syncDetail,
       }}
     >
       {children}

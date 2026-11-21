@@ -8,10 +8,10 @@ import { Button, FormField, Modal, NoticeBar, inputClass } from '../components/u
 export const LoginScreen: React.FC = () => {
   const { state, login, toast } = useSigen();
 
-  const [email, setEmail] = useState('admin@sigen-exemplo.edu.pt');
+  const [email, setEmail] = useState('admin@sigen-exemplo.pt');
   const [password, setPassword] = useState('Sigen2026!');
   const [mfaCode, setMfaCode] = useState('482910');
-  const [institutionId, setInstitutionId] = useState('inst-aeidh');
+  const [institutionId, setInstitutionId] = useState('inst-esc-1');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attempts, setAttempts] = useState(0);
@@ -57,7 +57,7 @@ export const LoginScreen: React.FC = () => {
     setEmail(u.email);
     setPassword(u.passwordDemo);
     setMfaCode(u.mfaAtivo ? u.mfaCodigoDemo : '');
-    setInstitutionId(u.escolasIds[0] || 'inst-aeidh');
+    setInstitutionId(u.escolasIds[0] || 'inst-esc-1');
     setError(null);
   };
 

@@ -19,6 +19,7 @@ import { ROLE_LABELS, ScreenId, ScreenSection } from '../types/sigen';
 import { SigenClassificacoesIcon, SigenLogo } from './SigenLogo';
 import { Button, StatusLabel } from './ui/SharedUI';
 import { downloadDocumentHtml, formatDateTimePT } from '../utils/exports';
+import { SyncBadge } from '../sync/SyncBadge';
 
 const SECTIONS_ORDER: ScreenSection[] = ['A', 'B', 'C', 'D', 'E'];
 
@@ -45,7 +46,10 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     notificationsOpen,
     setNotificationsOpen,
     resetDemoData,
+    confirmAction,
     isPhaseClosed,
+    syncStatus,
+    syncDetail,
   } = useSigen();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -207,7 +211,16 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </button>
             <button
               type="button"
-              onClick={resetDemoData}
+              onClick={() =>
+                confirmAction({
+                  title: 'Repor dados de exemplo?',
+                  message:
+                    'Os registos do SIGEN Classificações voltam ao conjunto inicial de exemplo. Com a base de dados partilhada ligada, isto afeta todos os utilizadores desta app.',
+                  confirmLabel: 'Repor dados',
+                  danger: true,
+                  onConfirm: resetDemoData,
+                })
+              }
               title="Repor dados de exemplo"
               className="p-1.5 text-[#536477] bg-white border border-slate-300 rounded-md hover:bg-slate-100 hover:text-[#112A4A] cursor-pointer"
               aria-label="Repor dados de exemplo"
@@ -304,6 +317,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <option value="2.ª Fase">2.ª Fase</option>
               <option value="Época Especial">Época Especial</option>
             </select>
+
+            <SyncBadge status={syncStatus} detail={syncDetail} />
 
             <button
               type="button"

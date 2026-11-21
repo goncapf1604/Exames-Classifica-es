@@ -262,7 +262,7 @@ export interface StudentResult {
   anoLetivo: string;
   fase: '1.ª Fase' | '2.ª Fase' | 'Época Especial';
   resultado: number | 'Faltou' | 'Anulada';
-  origem: 'Dados de exemplo' | 'Dados locais (K07/K08)' | 'Importação K10 (Teste)' | 'Fonte oficial';
+  origem: 'Dados de exemplo' | 'Dados locais (K07/K08)' | 'Importação K10 (Teste)' | 'Fonte oficial' | 'SIGEN Exames (presenças)';
   estado: 'Pendente' | 'Validado' | 'Discrepância' | 'Em retificação' | 'Publicado';
   justificacao?: string;
   historico: {
