@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-sans: "Public Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-sigen-navy: #112A4A;
+  --color-sigen-navy-hover: #0B1E36;
+  --color-sigen-teal: #087E91;
+  --color-sigen-teal-hover: #066373;
+  --color-sigen-green: #398B58;
+  --color-sigen-gold: #D99A00;
+  --color-sigen-muted: #536477;
+  --color-sigen-surface: #F8FAFC;
+  --color-sigen-border: #E2E8F0;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+    color: #112A4A;
+    background-color: #F8FAFC;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+  }
+
+  button, a, input, select, textarea {
+    outline-color: #087E91;
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #sigen-print-area,
+  #sigen-print-area * {
+    visibility: visible;
+  }
+  #sigen-print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    padding: 24px;
+    background: white;
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "SIGEN Classificações",
+  "description": "Plataforma institucional de gestão de classificações, cadeia de custódia, correção, pautas, consultas, reapreciações, reclamações e auditoria de exames.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
