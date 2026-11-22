@@ -50,6 +50,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     isPhaseClosed,
     syncStatus,
     syncDetail,
+    modoServidor,
   } = useSigen();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -212,18 +213,26 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             <button
               type="button"
               onClick={() =>
-                confirmAction({
-                  title: 'Repor dados de exemplo?',
-                  message:
-                    'Os registos do SIGEN Classificações voltam ao conjunto inicial de exemplo. Com a base de dados partilhada ligada, isto afeta todos os utilizadores desta app.',
-                  confirmLabel: 'Repor dados',
-                  danger: true,
-                  onConfirm: resetDemoData,
-                })
+                confirmAction(
+                  modoServidor
+                    ? {
+                        title: 'Recarregar dados do servidor?',
+                        message: 'A cópia local é substituída pelos dados atuais da base de dados SIGEN. Nenhum registo é apagado.',
+                        confirmLabel: 'Recarregar',
+                        onConfirm: resetDemoData,
+                      }
+                    : {
+                        title: 'Repor dados de exemplo?',
+                        message: 'Os registos locais voltam ao conjunto inicial de exemplo.',
+                        confirmLabel: 'Repor dados',
+                        danger: true,
+                        onConfirm: resetDemoData,
+                      }
+                )
               }
-              title="Repor dados de exemplo"
+              title={modoServidor ? 'Recarregar dados do servidor' : 'Repor dados de exemplo'}
               className="p-1.5 text-[#536477] bg-white border border-slate-300 rounded-md hover:bg-slate-100 hover:text-[#112A4A] cursor-pointer"
-              aria-label="Repor dados de exemplo"
+              aria-label={modoServidor ? 'Recarregar dados do servidor' : 'Repor dados de exemplo'}
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>

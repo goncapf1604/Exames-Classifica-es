@@ -7,6 +7,9 @@ import React from 'react';
 import { SigenProvider, useSigen } from './context/SigenContext';
 import { Layout } from './components/Layout';
 import { LoginScreen } from './screens/LoginScreen';
+import { AuthPanel } from './sync/AuthPanel';
+import { CLASSIFICACOES_PERFIS } from './sync/bindings';
+import { SigenLogo } from './components/SigenLogo';
 import {
   C02DashboardScreen,
   C03InstitutionsScreen,
@@ -94,13 +97,48 @@ const GlobalToasts: React.FC = () => {
   );
 };
 
-const SigenRouter: React.FC = () => {
-  const { currentUser, activeScreen } = useSigen();
+/** C01 com sessão iniciada (modo servidor): dados da sessão e saída segura. */
+const SessaoAtual: React.FC = () => {
+  const { currentUser, logout } = useSigen();
+  if (!currentUser) return null;
+  return (
+    <div className="max-w-xl bg-white border border-slate-200 rounded-lg p-6 space-y-3">
+      <h1 className="text-lg font-bold text-[#112A4A]">C01 · Sessão autenticada</h1>
+      <p className="text-sm text-[#536477]">
+        {currentUser.nome} · {currentUser.email}
+      </p>
+      <p className="text-xs text-[#536477]">
+        Autenticação gerida pela base de dados SIGEN{currentUser.mfaAtivo ? ' com verificação em dois passos (MFA)' : ''}.
+        Para alterar a palavra-passe ou o MFA peça ao administrador do agrupamento (C04).
+      </p>
+      <button
+        type="button"
+        onClick={logout}
+        className="inline-flex items-center rounded-md bg-[#B42318] px-4 py-2 text-sm font-semibold text-white hover:bg-[#912018]"
+      >
+        Terminar sessão
+      </button>
+    </div>
+  );
+};
 
-  if (!currentUser || activeScreen === 'C01') {
+const SigenRouter: React.FC = () => {
+  const { currentUser, activeScreen, modoServidor, iniciarSessao } = useSigen();
+
+  if (!currentUser || (activeScreen === 'C01' && !modoServidor)) {
     return (
       <>
-        <LoginScreen />
+        {modoServidor && !currentUser ? (
+          <AuthPanel
+            app="classificacoes"
+            perfis={CLASSIFICACOES_PERFIS}
+            logo={<SigenLogo variant="dark" subBrand="Classificações" />}
+            subtitulo="SIGEN Classificações · receção de provas, classificação, resultados e reapreciações."
+            onAutenticado={iniciarSessao}
+          />
+        ) : (
+          <LoginScreen />
+        )}
         <GlobalToasts />
       </>
     );
@@ -108,6 +146,8 @@ const SigenRouter: React.FC = () => {
 
   const renderScreen = () => {
     switch (activeScreen) {
+      case 'C01':
+        return <SessaoAtual />;
       case 'C02':
         return <C02DashboardScreen />;
       case 'C03':

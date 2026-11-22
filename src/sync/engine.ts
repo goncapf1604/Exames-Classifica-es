@@ -11,7 +11,7 @@
  *  3. Subscreve o Supabase Realtime: alterações feitas pela outra app (ou por
  *     outro utilizador, ou pelos gatilhos da base de dados) entram no estado.
  */
-import { createClient, RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
+import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 
 export type Row = Record<string, any>;
 
@@ -31,14 +31,12 @@ export interface Binding {
   /** Ordenação/limite na carga inicial (ex.: auditoria mais recente). */
   order?: { column: string; ascending: boolean };
   limit?: number;
+  /** Registos só de acrescentar (ex.: auditoria): insere sem nunca atualizar nem apagar. */
+  insertOnly?: boolean;
 }
 
 export type SyncStatus = 'desligado' | 'a ligar' | 'sincronizado' | 'a enviar' | 'erro' | 'offline';
 
-export interface SyncConfig {
-  url?: string;
-  key?: string;
-}
 
 const stableStringify = (value: unknown): string => {
   if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
@@ -55,7 +53,6 @@ const rowMatches = (row: Row, match?: Record<string, string>) =>
   !match || Object.entries(match).every(([k, v]) => row[k] === v);
 
 export class SyncEngine<S extends Record<string, any>> {
-  readonly client: SupabaseClient;
   private snapshot = new Map<string, Map<string, string>>();
   private channel: RealtimeChannel | null = null;
   private ready = false;
@@ -65,17 +62,13 @@ export class SyncEngine<S extends Record<string, any>> {
   private retryTimer: number | null = null;
 
   constructor(
-    config: Required<SyncConfig>,
+    readonly client: SupabaseClient,
     private readonly bindings: Binding[],
     private readonly applyRemote: (updater: (prev: S) => S) => void,
     private readonly onStatus: (status: SyncStatus, detail?: string) => void,
     /** Filtro do Realtime para a tabela "registos" (ex.: só a app atual). */
     private readonly registosFilter?: string
-  ) {
-    this.client = createClient(config.url, config.key, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-  }
+  ) {}
 
   private idOf(b: Binding, item: any): string {
     return String(item?.id ?? '');
@@ -113,6 +106,10 @@ export class SyncEngine<S extends Record<string, any>> {
       });
       this.applyRemote((prev) => ({ ...prev, ...patch }));
       this.ready = true;
+      // O tempo real tem de usar o token atual (ex.: já com MFA/aal2), senão as regras de acesso
+      // da base de dados não deixam passar os eventos.
+      const { data: sessao } = await this.client.auth.getSession();
+      if (sessao.session) await this.client.realtime.setAuth(sessao.session.access_token);
       this.subscribe();
       this.onStatus('sincronizado');
     } catch (err) {
@@ -156,8 +153,8 @@ export class SyncEngine<S extends Record<string, any>> {
     const snap = this.snapshot.get(binding.key)!;
 
     if (isDelete) {
-      const item = binding.fromRow(row);
-      const id = item ? this.idOf(binding, item) : String(row.id);
+      // Com RLS, o Realtime só envia a chave primária nas remoções
+      const id = String(row.id);
       if (!snap.has(id)) return;
       snap.delete(id);
       this.applyRemote((prev) => ({
@@ -179,6 +176,15 @@ export class SyncEngine<S extends Record<string, any>> {
       const next = idx >= 0 ? list.map((x, i) => (i === idx ? item : x)) : [item, ...list];
       return { ...prev, [binding.key]: next };
     });
+  }
+
+  /** Envia já as alterações pendentes (ex.: antes de terminar sessão). */
+  async flush(state?: S) {
+    if (state) this.latest = state;
+    if (!this.ready) return;
+    if (this.pushTimer) window.clearTimeout(this.pushTimer);
+    this.pushing = this.pushing.then(() => this.push());
+    await this.pushing;
   }
 
   /** Chamar sempre que o estado local muda. Envia as diferenças (com debounce). */
@@ -203,8 +209,10 @@ export class SyncEngine<S extends Record<string, any>> {
       const current = new Map<string, { item: any; json: string }>();
       for (const item of items) current.set(this.idOf(b, item), { item, json: stableStringify(item) });
 
-      const changed = [...current.entries()].filter(([id, v]) => snap.get(id) !== v.json);
-      const removed = [...snap.keys()].filter((id) => !current.has(id));
+      const changed = [...current.entries()].filter(([id, v]) =>
+        b.insertOnly ? !snap.has(id) : snap.get(id) !== v.json
+      );
+      const removed = b.insertOnly ? [] : [...snap.keys()].filter((id) => !current.has(id));
       if (changed.length === 0 && removed.length === 0) continue;
       if (!sent) this.onStatus('a enviar');
       sent = true;
@@ -212,7 +220,9 @@ export class SyncEngine<S extends Record<string, any>> {
       if (changed.length) {
         changed.forEach(([id, v]) => snap.set(id, v.json));
         const rows = changed.map(([, v]) => b.toRow(v.item));
-        const { error } = await this.client.from(b.table).upsert(rows, { onConflict: b.onConflict ?? 'id' });
+        const { error } = await this.client
+          .from(b.table)
+          .upsert(rows, { onConflict: b.onConflict ?? 'id', ignoreDuplicates: !!b.insertOnly });
         if (error) {
           changed.forEach(([id]) => snap.delete(id)); // volta a tentar na próxima alteração
           errors.push(`${b.key}: ${error.message}`);

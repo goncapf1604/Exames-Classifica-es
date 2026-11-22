@@ -53,23 +53,38 @@ Registos criados pelos gatilhos têm id `sync-…` e a coluna `origem_sync` pree
 - Indicador no cabeçalho: *Sincronizado*, *A guardar…*, *Sem ligação (local)*, *Erro*.
   Sem ligação a app continua a funcionar localmente e volta a tentar a cada 15 s.
 
+## Autenticação e acesso (segurança)
+
+- **Login real (Supabase Auth)**, a mesma conta serve as duas apps conforme o perfil.
+  1. email + palavra-passe;
+  2. **MFA TOTP** (Google/Microsoft Authenticator, Authy…) para contas com MFA ativo —
+     configurado com código QR no 1.º acesso;
+  3. **troca obrigatória** da palavra-passe temporária.
+  Só com os três passos cumpridos a base de dados devolve dados.
+- **Acesso por escola e por perfil, imposto pela base de dados (RLS)**, não pela app:
+  - sem sessão não se lê nada (o papel anónimo não tem acesso a nenhuma tabela);
+  - conta Suspensa ou fora da vigência não vê nada;
+  - cada utilizador só vê as escolas em `escola_ids` (Admin central: todas);
+  - EE / aluno maior só vê os seus educandos (ligados em E03 ou por `aluno_refs`),
+    resultados **publicados** e calendários publicados;
+  - a correspondência código anónimo ↔ aluno só é visível à Direção e ao Admin central;
+  - Auditor/EPD só lê; ninguém altera o seu próprio perfil, escolas ou estado;
+  - a auditoria só aceita novos registos (não se altera nem apaga) e o autor é
+    carimbado pelo servidor.
+- **C04** — "Palavra-passe temporária" e "Repor MFA" usam a função de servidor
+  `sigen-contas` (só administradores). A palavra-passe temporária é mostrada uma vez.
+- Com a base de dados ligada, nada dos dados fica guardado no browser (só a sessão);
+  ao sair, a cópia local é apagada. "Recarregar dados do servidor" nunca apaga nada.
+- Contas de exemplo: palavra-passe inicial `Sigen2026!` (troca obrigatória no 1.º acesso).
+
 ## Instalar de raiz noutro projeto Supabase
 
 1. Executar, por ordem, os ficheiros de `supabase/migrations/` no SQL editor.
-2. Carregar os dados de exemplo — primeiro o Exames, depois as Classificações:
+2. Publicar a função `supabase/functions/sigen-contas` (`supabase functions deploy sigen-contas`).
+3. Carregar os dados de exemplo e criar as contas — primeiro o Exames, depois as Classificações
+   (a chave `service_role` está em Project Settings > API; use-a só no seu computador):
    ```bash
-   npm run db:seed
+   SUPABASE_SERVICE_ROLE_KEY=... npm run db:seed
    ```
-   (ou `npm run db:seed-sql > seed.sql` e colar no SQL editor).
-3. Definir `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` nas duas apps.
+4. Definir `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` nas duas apps.
 
-## ⚠️ Antes de usar com dados reais
-
-As apps ainda usam o login de demonstração (`passwordDemo`), por isso as políticas
-RLS dão acesso total ao papel `anon`: **quem tiver a chave pública pode ler e
-alterar tudo**. Serve para demonstração com dados de exemplo. Para dados reais de
-alunos é preciso migrar o login para Supabase Auth e trocar as políticas
-`*_demo_all` por políticas por instituição (`escola_ids` do utilizador).
-
-"Repor dados de exemplo" passa a repor também a base de dados partilhada
-(para todos os utilizadores da app).

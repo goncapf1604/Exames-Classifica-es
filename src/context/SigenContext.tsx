@@ -11,7 +11,16 @@ import {
 import { nowIso } from '../utils/exports';
 import { SyncEngine, SyncStatus } from '../sync/engine';
 import { CLASSIFICACOES_BINDINGS, CLASSIFICACOES_REGISTOS_FILTER } from '../sync/bindings';
-import { SIGEN_SUPABASE_KEY, SIGEN_SUPABASE_URL, SIGEN_SYNC_ENABLED } from '../sync/config';
+import { SIGEN_SYNC_ENABLED } from '../sync/config';
+import { sigenDb } from '../sync/client';
+import { sair, SessaoSigen } from '../sync/auth';
+
+/** Estado sem dados (antes do login, com a base de dados partilhada ligada). */
+const estadoVazio = (): SigenState => {
+  const vazio: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(INITIAL_SIGEN_STATE)) vazio[k] = Array.isArray(v) ? [] : v;
+  return vazio as unknown as SigenState;
+};
 
 const STORAGE_KEY = 'sigen_classificacoes_state_v3';
 const SESSION_KEY = 'sigen_classificacoes_session_v3';
@@ -71,12 +80,17 @@ interface SigenContextValue {
   /** Estado da ligação à base de dados partilhada SIGEN. */
   syncStatus: SyncStatus;
   syncDetail?: string;
+  /** true quando a app usa a base de dados partilhada com login real. */
+  modoServidor: boolean;
+  iniciarSessao: (sessao: SessaoSigen) => Promise<void>;
 }
 
 const SigenContext = createContext<SigenContextValue | null>(null);
 
 export const SigenProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, setState] = useState<SigenState>(() => {
+    // Com a base de dados partilhada ligada, os dados só chegam depois do login (nada fica no browser).
+    if (SIGEN_SYNC_ENABLED) return estadoVazio();
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -89,6 +103,7 @@ export const SigenProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   });
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => {
+    if (SIGEN_SYNC_ENABLED) return null;
     try {
       return localStorage.getItem(SESSION_KEY) || null;
     } catch {
@@ -108,6 +123,7 @@ export const SigenProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   useEffect(() => {
+    if (SIGEN_SYNC_ENABLED) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
@@ -115,15 +131,25 @@ export const SigenProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [state]);
 
-  // --- Sincronização com a base de dados partilhada (SIGEN Exames + SIGEN Classificações) ---
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>(SIGEN_SYNC_ENABLED ? 'a ligar' : 'desligado');
+  // --- Base de dados partilhada (SIGEN Exames + SIGEN Classificações) ---
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('desligado');
   const [syncDetail, setSyncDetail] = useState<string | undefined>();
   const syncRef = useRef<SyncEngine<SigenState> | null>(null);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
-  useEffect(() => {
-    if (!SIGEN_SYNC_ENABLED) return;
+  const pararSincronizacao = () => {
+    syncRef.current?.stop();
+    syncRef.current = null;
+    setSyncStatus('desligado');
+  };
+
+  /** Chamado pelo ecrã de login quando a autenticação (password + MFA + troca de password) está completa. */
+  const iniciarSessao = async (sessao: SessaoSigen) => {
+    if (!sigenDb) return;
+    pararSincronizacao();
     const engine = new SyncEngine<SigenState>(
-      { url: SIGEN_SUPABASE_URL, key: SIGEN_SUPABASE_KEY },
+      sigenDb,
       CLASSIFICACOES_BINDINGS,
       (updater) => setState((prev) => ({ ...updater(prev), lastSyncAt: nowIso() })),
       (status, detail) => {
@@ -133,12 +159,33 @@ export const SigenProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       CLASSIFICACOES_REGISTOS_FILTER
     );
     syncRef.current = engine;
-    void engine.start();
-    return () => {
-      engine.stop();
-      syncRef.current = null;
-    };
-  }, []);
+    await engine.start();
+    const inst = sessao.escolas.find((id) => id.startsWith('inst-esc')) ?? sessao.escolas[0] ?? 'inst-esc-1';
+    setCurrentUserId(sessao.utilizador_id);
+    setActiveInstitutionIdState(inst);
+    setActiveScreen('C02');
+    setState((prev) => ({
+      ...prev,
+      users: prev.users.map((u) => (u.id === sessao.utilizador_id ? { ...u, ultimoAcesso: nowIso() } : u)),
+      auditLogs: [
+        {
+          id: `aud-in-${Date.now()}`,
+          institutionId: inst,
+          dataHora: nowIso(),
+          utilizador: sessao.nome,
+          perfil: (prev.users.find((u) => u.id === sessao.utilizador_id)?.perfil ?? 'SECRETARIADO'),
+          entidade: 'Sessão C01',
+          ecra: 'C01',
+          acao: sessao.mfa_ativo ? 'Sessão iniciada com MFA' : 'Sessão iniciada',
+          detalhe: 'Acesso validado na base de dados SIGEN.',
+        },
+        ...prev.auditLogs,
+      ],
+    }));
+    toast({ type: 'success', title: `Sessão iniciada como ${sessao.nome}`, detail: 'Contexto institucional carregado com isolamento de dados.' });
+  };
+
+  useEffect(() => () => pararSincronizacao(), []);
 
   useEffect(() => {
     syncRef.current?.notifyLocalChange(state);
@@ -330,8 +377,20 @@ export const SigenProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         detalhe: 'Saída voluntária do utilizador.',
       });
     }
-    setCurrentUserId(null);
-    setActiveScreen('C01');
+    if (SIGEN_SYNC_ENABLED) {
+      // Grava o registo de saída e termina a sessão no servidor ANTES de mostrar o login
+      window.setTimeout(async () => {
+        await syncRef.current?.flush(stateRef.current);
+        pararSincronizacao();
+        await sair().catch(() => undefined);
+        setState(estadoVazio());
+        setCurrentUserId(null);
+        setActiveScreen('C01');
+      }, 100);
+    } else {
+      setCurrentUserId(null);
+      setActiveScreen('C01');
+    }
   };
 
   const isPhaseClosed = useMemo(() => {
@@ -356,6 +415,17 @@ export const SigenProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const resetDemoData = () => {
+    if (SIGEN_SYNC_ENABLED) {
+      // Nunca apaga dados partilhados: volta a carregar tudo do servidor.
+      const engine = syncRef.current;
+      if (!engine) return;
+      engine.stop();
+      setState(estadoVazio());
+      void engine.start().then(() =>
+        toast({ type: 'success', title: 'Dados recarregados', detail: 'Cópia local atualizada a partir da base de dados SIGEN.' })
+      );
+      return;
+    }
     setState(INITIAL_SIGEN_STATE);
     localStorage.removeItem(STORAGE_KEY);
     toast({
@@ -401,6 +471,8 @@ export const SigenProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         refreshSync,
         syncStatus,
         syncDetail,
+        modoServidor: SIGEN_SYNC_ENABLED,
+        iniciarSessao,
       }}
     >
       {children}

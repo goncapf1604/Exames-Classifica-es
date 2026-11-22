@@ -1,3 +1,4 @@
+import { gerirConta } from '../sync/auth';
 import React, { useMemo, useState } from 'react';
 import {
   AlertTriangle,
@@ -662,7 +663,34 @@ export const C03InstitutionsScreen: React.FC = () => {
  * C04 · Utilizadores e permissões
  * ========================================================================== */
 export const C04UsersScreen: React.FC = () => {
-  const { state, updateState, logAudit, toast, confirmAction, navigate } = useSigen();
+  const { state, updateState, logAudit, toast, confirmAction, navigate, modoServidor } = useSigen();
+
+  // Contas reais (Supabase Auth): palavra-passe temporária mostrada uma única vez ao administrador
+  const mostrarPassword = (email: string, password: string) =>
+    confirmAction({
+      title: 'Palavra-passe temporária',
+      message: `Comunique a ${email}, por um canal seguro, a palavra-passe temporária ${password} — será obrigatório definir uma nova no 1.º acesso. Não volta a ser mostrada.`,
+      confirmLabel: 'Já comuniquei',
+      onConfirm: () => undefined,
+    });
+  const emitirPassword = async (u: UserAccount) => {
+    let r = await gerirConta('repor_password', { utilizador_id: u.id }, 'classificacoes');
+    if (r.erro?.includes('ainda não tem conta')) r = await gerirConta('criar', { email: u.email }, 'classificacoes');
+    if (r.erro || !r.password) toast({ type: 'error', title: 'Não foi possível emitir a palavra-passe', detail: r.erro });
+    else mostrarPassword(u.email, r.password);
+  };
+  const reporMfa = (u: UserAccount) =>
+    confirmAction({
+      title: `Repor o MFA de ${u.nome}?`,
+      message: 'A aplicação autenticadora atual deixa de funcionar e o utilizador terá de configurar o MFA no próximo acesso.',
+      confirmLabel: 'Repor MFA',
+      danger: true,
+      onConfirm: async () => {
+        const r = await gerirConta('repor_mfa', { utilizador_id: u.id }, 'classificacoes');
+        if (r.erro) toast({ type: 'error', title: 'Não foi possível repor o MFA', detail: r.erro });
+        else toast({ type: 'success', title: 'MFA reposto', detail: u.email });
+      },
+    });
   const [search, setSearch] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<UserAccount | null>(null);
@@ -774,6 +802,13 @@ export const C04UsersScreen: React.FC = () => {
         detalhe: `Convite enviado para ${created.email} com perfil ${ROLE_LABELS[created.perfil]}.`,
       });
       toast({ type: 'success', title: 'Convite enviado e permissões atribuídas' });
+      if (modoServidor) {
+        void gerirConta('criar', { email: created.email }, 'classificacoes').then((r) =>
+          r.password
+            ? mostrarPassword(created.email, r.password)
+            : toast({ type: 'error', title: 'Conta de acesso não criada', detail: r.erro })
+        );
+      }
     }
     setModalOpen(false);
   };
@@ -867,6 +902,18 @@ export const C04UsersScreen: React.FC = () => {
                       <Button variant="secondary" size="sm" onClick={() => openEdit(u)}>
                         Editar
                       </Button>
+                      {modoServidor ? (
+                        <>
+                          <Button variant="ghost" size="sm" onClick={() => void emitirPassword(u)}>
+                            Palavra-passe temporária
+                          </Button>
+                          {u.mfaAtivo && (
+                            <Button variant="ghost" size="sm" onClick={() => reporMfa(u)}>
+                              Repor MFA
+                            </Button>
+                          )}
+                        </>
+                      ) : (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -882,6 +929,7 @@ export const C04UsersScreen: React.FC = () => {
                       >
                         Reenviar convite
                       </Button>
+                      )}
                       <Button variant="ghost" size="sm" onClick={() => navigate('C07')}>
                         Ver acessos
                       </Button>

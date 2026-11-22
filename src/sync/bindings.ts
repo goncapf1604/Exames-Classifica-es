@@ -139,13 +139,11 @@ const users: Binding = {
     id: u.id,
     nome: u.nome,
     email: u.email,
-    password_demo: u.passwordDemo,
     perfil: ROLE_TO_DB[u.perfil],
     escola_ids: u.escolasIds ?? [],
     vigencia_inicio: dateOrNull(u.vigenciaInicio),
     vigencia_fim: dateOrNull(u.vigenciaFim),
     mfa_ativo: !!u.mfaAtivo,
-    mfa_codigo_demo: u.mfaCodigoDemo ?? '000000',
     estado: u.estado,
     ultimo_acesso: u.ultimoAcesso ? normIso(u.ultimoAcesso) : null,
     atualizado_por: APP,
@@ -157,13 +155,13 @@ const users: Binding = {
       id: r.id,
       nome: r.nome,
       email: r.email,
-      passwordDemo: r.password_demo ?? '',
+      passwordDemo: '', // gerida pelo Supabase Auth
       perfil,
       escolasIds: r.escola_ids ?? [],
       vigenciaInicio: r.vigencia_inicio ?? '',
       vigenciaFim: r.vigencia_fim ?? '',
       mfaAtivo: !!r.mfa_ativo,
-      mfaCodigoDemo: r.mfa_codigo_demo ?? '000000',
+      mfaCodigoDemo: '', // MFA real (TOTP) no Supabase Auth
       estado: r.estado,
     };
     if (r.ultimo_acesso) u.ultimoAcesso = normIso(r.ultimo_acesso);
@@ -211,6 +209,7 @@ const notifications: Binding = {
 const auditLogs: Binding = {
   key: 'auditLogs',
   table: 'auditoria',
+  insertOnly: true,
   order: { column: 'data_hora', ascending: false },
   limit: 1000,
   toRow: (a: AuditLog): Row => ({
@@ -305,5 +304,8 @@ export const CLASSIFICACOES_BINDINGS: Binding[] = [
   registosBinding(APP, 'interopJobs', 'institutionId'),
   registosBinding(APP, 'closures', 'institutionId'),
 ];
+
+/** Perfis (canónicos) com acesso ao SIGEN Classificações. */
+export const CLASSIFICACOES_PERFIS = Object.values(ROLE_TO_DB);
 
 export const CLASSIFICACOES_REGISTOS_FILTER = `app=eq.${APP}`;
