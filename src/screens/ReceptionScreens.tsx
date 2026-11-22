@@ -432,7 +432,7 @@ export const K02CustodyScreen: React.FC = () => {
             headers: ['Data/Hora', 'Movimento', 'Responsável', 'Observação'],
             rows: lot.eventos.map((ev) => [formatDateTimePT(ev.dataHora), ev.tipo, ev.responsavel, ev.observacao]),
           },
-          note: 'Este registo local apoia o controlo interno e não substitui a cadeia de custódia oficial.',
+          note: 'Registo de controlo da cadeia de custódia.',
         },
       ],
     });
@@ -452,7 +452,7 @@ export const K02CustodyScreen: React.FC = () => {
 
       <NoticeBar tone="info" title="Regra de custódia">
         Histórico estritamente append-only (sem eliminação de movimentos). Divergências exigem dupla
-        conferência e geram incidente auditável. Não substitui a cadeia de custódia oficial do JNE.
+        conferência e geram incidente auditável.
       </NoticeBar>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

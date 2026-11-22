@@ -26,9 +26,10 @@ export type ScreenId =
   | 'K01' | 'K02' | 'K03' | 'K04' | 'K05'
   | 'K06' | 'K07' | 'K08' | 'K09' | 'K10' | 'K11' | 'K12' | 'K13'
   | 'K14' | 'K15' | 'K16' | 'K17' | 'K18' | 'K19' | 'K20'
-  | 'K21' | 'K22' | 'K23';
+  | 'K21' | 'K22' | 'K23'
+  | 'EN01' | 'EN02' | 'EN03';
 
-export type ScreenSection = 'A' | 'B' | 'C' | 'D' | 'E';
+export type ScreenSection = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
 
 export interface ScreenDefinition {
   id: ScreenId;
@@ -262,7 +263,7 @@ export interface StudentResult {
   anoLetivo: string;
   fase: '1.ª Fase' | '2.ª Fase' | 'Época Especial';
   resultado: number | 'Faltou' | 'Anulada';
-  origem: 'Dados de exemplo' | 'Dados locais (K07/K08)' | 'Importação K10 (Teste)' | 'Fonte oficial';
+  origem: 'Dados de exemplo' | 'Dados locais (K07/K08)' | 'Importação K10 (Teste)' | 'Fonte oficial' | 'SIGEN Exames (presenças)' | 'Importação ENES/ENEB';
   estado: 'Pendente' | 'Validado' | 'Discrepância' | 'Em retificação' | 'Publicado';
   justificacao?: string;
   historico: {
@@ -457,4 +458,108 @@ export interface PrintableDocument {
     table?: { headers: string[]; rows: string[][] };
     note?: string;
   }[];
+}
+
+// ---------------------------------------------------------------------------
+// Módulo ENES/ENEB (adenda SIGEN 04) — EN01 formatos, EN02 importação, EN03 reconciliação
+// ---------------------------------------------------------------------------
+
+/** Campos canónicos que um formato tem de mapear para a importação. */
+export type EnesCampo =
+  | 'alunoRef'
+  | 'nome'
+  | 'codigoEscola'
+  | 'curso'
+  | 'provaCodigo'
+  | 'fase'
+  | 'data'
+  | 'classificacao';
+
+export type EnesFormatoEstado =
+  | 'Rascunho'
+  | 'Em validação'
+  | 'Ativo (testes)'
+  | 'Homologado'
+  | 'Desativado';
+
+export interface EnesFormato {
+  id: string;
+  /** Formatos são configuração global (sem escola). */
+  institutionId?: undefined;
+  anoLetivo: string;
+  fase: '1.ª Fase' | '2.ª Fase' | 'Época Especial';
+  sistemaOrigem: 'ENES' | 'ENEB' | 'Outro';
+  versaoFormato: string;
+  extensao: '.csv' | '.txt';
+  codificacao: 'utf-8' | 'windows-1252' | 'iso-8859-1';
+  delimitador: ';' | ',' | '|' | 'TAB';
+  cabecalhos: string[];
+  mapaColunas: Partial<Record<EnesCampo, string>>;
+  regrasValidacao: string[];
+  dataVigencia: string;
+  estado: EnesFormatoEstado;
+  referenciaDocumental: string;
+  versao: number;
+  historico: { dataHora: string; autor: string; acao: string; nota?: string }[];
+}
+
+export interface EnesLinhaImportada {
+  linha: number;
+  alunoRef: string;
+  nome: string;
+  codigoEscola?: string;
+  curso?: string;
+  provaCodigo: string;
+  fase: string;
+  data?: string;
+  classificacao: string;
+}
+
+export interface EnesImportacao {
+  id: string;
+  institutionId: string;
+  anoLetivo: string;
+  fase: '1.ª Fase' | '2.ª Fase' | 'Época Especial';
+  origem: 'ENES' | 'ENEB' | 'Outro';
+  formatoId: string;
+  formatoVersao: string;
+  ficheiro: string;
+  tamanhoBytes: number;
+  checksum: string;
+  operador: string;
+  dataHora: string;
+  modo: 'Teste' | 'Produção';
+  estado: 'Validado' | 'Com erros' | 'Simulado' | 'Importado' | 'Anulado';
+  linhas: EnesLinhaImportada[];
+  erros: { linha: number; campo: string; erro: string }[];
+  avisos: string[];
+  justificacaoAnulacao?: string;
+  historico: { dataHora: string; autor: string; acao: string; nota?: string }[];
+}
+
+export type EnesCorrespondencia = 'Correspondente' | 'Divergente' | 'Sem correspondência';
+
+export interface EnesReconciliacao {
+  id: string;
+  institutionId: string;
+  importacaoId: string;
+  linha: number;
+  alunoRef: string;
+  nome: string;
+  curso?: string;
+  provaCodigo: string;
+  provaNome: string;
+  anoLetivo: string;
+  fase: '1.ª Fase' | '2.ª Fase' | 'Época Especial';
+  data?: string;
+  classificacaoImportada: string;
+  resultadoId?: string;
+  classificacaoLocal?: string;
+  estadoResultadoLocal?: StudentResult['estado'];
+  correspondencia: EnesCorrespondencia;
+  decisao: 'Pendente' | 'Em revisão' | 'Manter local' | 'Aceitar importada' | 'Criar resultado';
+  justificacao?: string;
+  estado: 'Pendente' | 'Confirmada' | 'Anulada';
+  decididoPor?: string;
+  decididoEm?: string;
 }

@@ -50,7 +50,7 @@ export const K10ImportScreen: React.FC = () => {
   const { updateState, activeInstitutionId, activeYear, activePhase, logAudit, toast, navigate } = useSigen();
 
   const [origem, setOrigem] = useState('Importação Genérica de Teste (CSV)');
-  const [esquema, setEsquema] = useState('Esquema Teste v2.0 (Não oficial)');
+  const [esquema, setEsquema] = useState('Esquema Teste v2.0');
   const [fileName, setFileName] = useState('');
   const [rawText, setRawText] = useState('');
   const [rows, setRows] = useState<ParsedRow[]>([]);
@@ -205,7 +205,7 @@ export const K10ImportScreen: React.FC = () => {
           </FormField>
           <FormField label="Esquema / versão" required>
             <select value={esquema} onChange={(e) => setEsquema(e.target.value)} className={inputClass}>
-              <option>Esquema Teste v2.0 (Não oficial)</option>
+              <option>Esquema Teste v2.0</option>
               <option>CSV Delimitado por Ponto e Vírgula (v1)</option>
             </select>
           </FormField>

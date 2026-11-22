@@ -1,4 +1,8 @@
+import type { CondicoesLike } from '../utils/condicoesEnes';
 import {
+  EnesFormato,
+  EnesImportacao,
+  EnesReconciliacao,
   AnonymousMapping,
   AuditLog,
   CalendarConfig,
@@ -50,43 +54,102 @@ export interface SigenState {
   classificationRectifications: ClassificationRectification[];
   interopJobs: InteropJob[];
   closures: PhaseClosure[];
+  enesFormatos: EnesFormato[];
+  enesImportacoes: EnesImportacao[];
+  enesReconciliacoes: EnesReconciliacao[];
+  /** Condições de emissão ENES definidas no SIGEN Exames (só leitura). */
+  condicoesEnes: CondicoesLike[];
   lastSyncAt: string;
 }
 
 export const INITIAL_SIGEN_STATE: SigenState = {
   lastSyncAt: '2026-11-21T09:15:00.000Z',
 
+  // EN01 · Formato de TESTES do SIGEN — não é o layout oficial ENES/ENEB (adenda SIGEN 04, §2)
+  enesFormatos: [
+    {
+      id: 'fmt-teste-enes-2526',
+      anoLetivo: '2025/2026',
+      fase: '1.ª Fase',
+      sistemaOrigem: 'ENES',
+      versaoFormato: 'SIGEN-TESTE-1.0',
+      extensao: '.csv',
+      codificacao: 'utf-8',
+      delimitador: ';',
+      cabecalhos: ['NUM_PROCESSO', 'NOME', 'COD_ESCOLA', 'CURSO', 'COD_PROVA', 'FASE', 'DATA', 'CLASSIFICACAO'],
+      mapaColunas: {
+        alunoRef: 'NUM_PROCESSO',
+        nome: 'NOME',
+        codigoEscola: 'COD_ESCOLA',
+        curso: 'CURSO',
+        provaCodigo: 'COD_PROVA',
+        fase: 'FASE',
+        data: 'DATA',
+        classificacao: 'CLASSIFICACAO',
+      },
+      regrasValidacao: [
+        'Classificação inteira entre 0 e 200, ou "Faltou" / "Anulada"',
+        'Sem linhas duplicadas (processo + prova + fase)',
+        'Código de escola igual ao da escola ativa',
+        'Código de prova conhecido no calendário do ano/fase',
+      ],
+      dataVigencia: '2026-06-01',
+      estado: 'Ativo (testes)',
+      referenciaDocumental: 'Formato interno de testes — aguarda especificação oficial (adenda SIGEN 04, §10)',
+      versao: 1,
+      historico: [
+        { dataHora: '2026-11-21T09:00:00.000Z', autor: 'Helena Nogueira', acao: 'Formato de testes criado' },
+      ],
+    },
+  ],
+  enesImportacoes: [],
+  enesReconciliacoes: [],
+  condicoesEnes: [],
+
+  // Instituições partilhadas com o SIGEN Exames (mesmos ids na base de dados comum)
   institutions: [
     {
-      id: 'inst-aeidh',
+      id: 'inst-agr-1',
       designacao: 'Agrupamento de Escolas Infante D. Henrique (Exemplo)',
-      codigoEscola: '150892',
+      codigoEscola: '151408',
       tipo: 'Agrupamento',
-      morada: 'Av. dos Descobrimentos 42, 4050-210 Porto',
-      contacto: 'secretaria@aeidh-exemplo.edu.pt · 220 100 410',
+      morada: 'Av. dos Descobrimentos, 140, 4400-103 Vila Nova de Gaia',
+      contacto: 'direcao@aeidh-exemplo.edu.pt · 223 700 100',
       estado: 'Ativa',
       criadaEm: '2025-09-01',
       temHistorico: true,
     },
     {
-      id: 'inst-esgv',
-      designacao: 'Escola Secundária Gil Vicente (Exemplo)',
-      codigoEscola: '401827',
+      id: 'inst-esc-1',
+      designacao: 'Escola Secundária Infante D. Henrique',
+      codigoEscola: '401824',
       tipo: 'Escola Secundária',
-      agrupamentoMaeId: 'inst-aeidh',
-      morada: 'Rua das Laranjeiras 18, 4050-330 Porto',
-      contacto: 'exames@esgv-exemplo.edu.pt · 220 100 422',
+      agrupamentoMaeId: 'inst-agr-1',
+      morada: 'Av. dos Descobrimentos, 140, 4400-103 Vila Nova de Gaia',
+      contacto: 'secretariado.exames@aeidh-exemplo.edu.pt · 223 700 112',
       estado: 'Ativa',
       criadaEm: '2025-09-01',
       temHistorico: true,
     },
     {
-      id: 'inst-esca',
-      designacao: 'Escola Secundária de Coimbra Sul (Exemplo)',
-      codigoEscola: '402915',
+      id: 'inst-esc-2',
+      designacao: 'Escola Básica 2,3 D. Afonso Henriques',
+      codigoEscola: '341209',
+      tipo: 'Escola Básica',
+      agrupamentoMaeId: 'inst-agr-1',
+      morada: 'Rua da Escola Nova, 45, 4400-210 Vila Nova de Gaia',
+      contacto: 'eb23.afonso@aeidh-exemplo.edu.pt · 223 700 220',
+      estado: 'Ativa',
+      criadaEm: '2025-09-01',
+      temHistorico: true,
+    },
+    {
+      id: 'inst-esc-3',
+      designacao: 'Escola Secundária Rainha Santa Isabel',
+      codigoEscola: '402190',
       tipo: 'Escola Secundária',
-      morada: 'Rua da Sofia 104, 3000-389 Coimbra',
-      contacto: 'direcao@escs-exemplo.edu.pt · 239 200 811',
+      morada: 'Largo da Universidade, 18, 3000-142 Coimbra',
+      contacto: 'exames@esrsi-exemplo.edu.pt · 239 810 400',
       estado: 'Ativa',
       criadaEm: '2025-09-05',
       temHistorico: true,
@@ -96,11 +159,11 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   users: [
     {
       id: 'usr-admin',
-      nome: 'Helena Vasconcelos',
-      email: 'admin@sigen-exemplo.edu.pt',
+      nome: 'Helena Nogueira',
+      email: 'admin@sigen-exemplo.pt',
       passwordDemo: 'Sigen2026!',
       perfil: 'ADMIN_CENTRAL',
-      escolasIds: ['inst-aeidh', 'inst-esgv', 'inst-esca'],
+      escolasIds: ['inst-esc-1', 'inst-esc-2', 'inst-esc-3'],
       vigenciaInicio: '2025-09-01',
       vigenciaFim: '2027-08-31',
       mfaAtivo: true,
@@ -110,11 +173,11 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'usr-dir',
-      nome: 'Dr. António Figueiredo',
+      nome: 'Dr. Rui Carvalho',
       email: 'direcao@aeidh-exemplo.edu.pt',
       passwordDemo: 'Sigen2026!',
       perfil: 'DIRECAO',
-      escolasIds: ['inst-aeidh', 'inst-esgv'],
+      escolasIds: ['inst-esc-1', 'inst-esc-2'],
       vigenciaInicio: '2025-09-01',
       vigenciaFim: '2026-12-31',
       mfaAtivo: true,
@@ -124,11 +187,11 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'usr-coord',
-      nome: 'Prof.ª Beatriz Nogueira',
+      nome: 'Prof. Miguel Tavares',
       email: 'coordenacao@aeidh-exemplo.edu.pt',
       passwordDemo: 'Sigen2026!',
       perfil: 'COORDENACAO',
-      escolasIds: ['inst-aeidh', 'inst-esgv'],
+      escolasIds: ['inst-esc-1', 'inst-esc-2'],
       vigenciaInicio: '2026-01-15',
       vigenciaFim: '2026-12-31',
       mfaAtivo: false,
@@ -138,11 +201,11 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'usr-sec',
-      nome: 'Rui Almeida',
+      nome: 'Carla Ferreira',
       email: 'secretariado@aeidh-exemplo.edu.pt',
       passwordDemo: 'Sigen2026!',
       perfil: 'SECRETARIADO',
-      escolasIds: ['inst-aeidh', 'inst-esgv'],
+      escolasIds: ['inst-esc-1', 'inst-esc-2'],
       vigenciaInicio: '2025-09-01',
       vigenciaFim: '2026-12-31',
       mfaAtivo: false,
@@ -156,7 +219,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
       email: 'classificador@aeidh-exemplo.edu.pt',
       passwordDemo: 'Sigen2026!',
       perfil: 'CLASSIFICADOR',
-      escolasIds: ['inst-aeidh'],
+      escolasIds: ['inst-esc-1'],
       vigenciaInicio: '2026-06-01',
       vigenciaFim: '2026-12-31',
       mfaAtivo: true,
@@ -170,7 +233,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
       email: 'conferente@aeidh-exemplo.edu.pt',
       passwordDemo: 'Sigen2026!',
       perfil: 'CONFERENTE',
-      escolasIds: ['inst-aeidh'],
+      escolasIds: ['inst-esc-1'],
       vigenciaInicio: '2026-06-01',
       vigenciaFim: '2026-12-31',
       mfaAtivo: false,
@@ -184,7 +247,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
       email: 'epd@sigen-exemplo.edu.pt',
       passwordDemo: 'Sigen2026!',
       perfil: 'AUDITOR_EPD',
-      escolasIds: ['inst-aeidh', 'inst-esgv', 'inst-esca'],
+      escolasIds: ['inst-esc-1', 'inst-esc-2', 'inst-esc-3'],
       vigenciaInicio: '2025-09-01',
       vigenciaFim: '2027-08-31',
       mfaAtivo: true,
@@ -193,12 +256,12 @@ export const INITIAL_SIGEN_STATE: SigenState = {
       ultimoAcesso: '2026-11-19T14:50:00.000Z',
     },
     {
-      id: 'usr-ee',
+      id: 'usr-ee-teixeira',
       nome: 'Carla Teixeira (EE · Aluno N.º 2026-014)',
       email: 'ee.teixeira@exemplo.pt',
       passwordDemo: 'Sigen2026!',
       perfil: 'ALUNO_EE',
-      escolasIds: ['inst-aeidh'],
+      escolasIds: ['inst-esc-1'],
       vigenciaInicio: '2026-06-01',
       vigenciaFim: '2026-12-31',
       mfaAtivo: false,
@@ -211,7 +274,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   calendars: [
     {
       id: 'cal-2526-f1',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       anoLetivo: '2025/2026',
       fase: '1.ª Fase',
       inscricaoInicio: '2026-03-06',
@@ -244,7 +307,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'cal-2526-f2',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       anoLetivo: '2025/2026',
       fase: '2.ª Fase',
       inscricaoInicio: '2026-07-15',
@@ -268,7 +331,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'cal-esca-f1',
-      institutionId: 'inst-esca',
+      institutionId: 'inst-esc-3',
       anoLetivo: '2025/2026',
       fase: '1.ª Fase',
       inscricaoInicio: '2026-03-06',
@@ -295,12 +358,12 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   notifications: [
     {
       id: 'not-001',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       destinatario: 'Coordenação de Classificações',
       canal: 'Plataforma',
       assunto: 'Lote LT-2026-635-01 conferido e pronto para distribuição',
       mensagem:
-        'Informa-se que o lote LT-2026-635-01 (Matemática A · 32 provas) concluiu a conferência de receção sem divergências. Aviso informativo interno; não substitui comunicações oficiais.',
+        'Informa-se que o lote LT-2026-635-01 (Matemática A · 32 provas) concluiu a conferência de receção sem divergências.',
       anexos: ['Termo_Rececao_LT-2026-635-01.pdf'],
       dataEnvio: '2026-11-20T11:20:00.000Z',
       estado: 'Enviada',
@@ -309,7 +372,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'not-002',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       destinatario: 'Prof. Duarte Mendes',
       canal: 'Email institucional',
       assunto: 'Proposta de atribuição de lote LT-2026-635-01',
@@ -323,7 +386,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'not-003',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       destinatario: 'Encarregados de Educação (Grupo 1.ª Fase)',
       canal: 'Plataforma',
       assunto: 'Aviso sobre prazos de consulta de prova (Norma 03)',
@@ -340,7 +403,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   auditLogs: [
     {
       id: 'aud-001',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       dataHora: '2026-11-21T08:40:00.000Z',
       utilizador: 'Helena Vasconcelos',
       perfil: 'ADMIN_CENTRAL',
@@ -351,7 +414,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'aud-002',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       dataHora: '2026-11-20T11:18:00.000Z',
       utilizador: 'Rui Almeida',
       perfil: 'SECRETARIADO',
@@ -364,7 +427,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'aud-003',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       dataHora: '2026-11-20T16:45:00.000Z',
       utilizador: 'Dr. António Figueiredo',
       perfil: 'DIRECAO',
@@ -376,7 +439,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'aud-004',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       dataHora: '2026-11-20T19:10:00.000Z',
       utilizador: 'Prof. Duarte Mendes',
       perfil: 'CLASSIFICADOR',
@@ -392,7 +455,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   incidents: [
     {
       id: 'inc-001',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       dataHora: '2026-11-20T15:10:00.000Z',
       tipo: 'Divergência custódia',
       descricao: 'Lote LT-2026-715-03 registou 1 folha de rosto sem selo intacto; aguarda dupla conferência.',
@@ -404,7 +467,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   lots: [
     {
       id: 'lot-01',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       codigoLote: 'LT-2026-635-01',
       provaCodigo: '635',
       provaNome: 'Matemática A',
@@ -436,7 +499,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'lot-02',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       codigoLote: 'LT-2026-639-02',
       provaCodigo: '639',
       provaNome: 'Português',
@@ -468,7 +531,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'lot-03',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       codigoLote: 'LT-2026-715-03',
       provaCodigo: '715',
       provaNome: 'Física e Química A',
@@ -500,7 +563,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'lot-esca-01',
-      institutionId: 'inst-esca',
+      institutionId: 'inst-esc-3',
       codigoLote: 'LT-2026-712-C1',
       provaCodigo: '712',
       provaNome: 'Economia A',
@@ -527,7 +590,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   anonymousMappings: [
     {
       id: 'an-01',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       codigoAnonimo: 'ANON-635-001',
       provaCodigo: '635',
       provaNome: 'Matemática A',
@@ -540,7 +603,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'an-02',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       codigoAnonimo: 'ANON-635-002',
       provaCodigo: '635',
       provaNome: 'Matemática A',
@@ -553,7 +616,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'an-03',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       codigoAnonimo: 'ANON-639-011',
       provaCodigo: '639',
       provaNome: 'Português',
@@ -568,7 +631,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   graders: [
     {
       id: 'grd-01',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       nome: 'Prof. Duarte Mendes',
       identificadorProfissional: 'DOC-500-4419',
       disciplinas: ['635 · Matemática A', '735 · Matemática B'],
@@ -581,7 +644,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'grd-02',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       nome: 'Prof.ª Catarina Azevedo',
       identificadorProfissional: 'DOC-300-8821',
       disciplinas: ['639 · Português', '734 · Literatura Portuguesa'],
@@ -594,7 +657,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'grd-03',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       nome: 'Prof. Miguel Tavares',
       identificadorProfissional: 'DOC-510-1904',
       disciplinas: ['715 · Física e Química A'],
@@ -610,7 +673,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   assignments: [
     {
       id: 'asg-01',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       loteId: 'lot-01',
       loteCodigo: 'LT-2026-635-01',
       provaCodigo: '635',
@@ -626,7 +689,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'asg-02',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       loteId: 'lot-02',
       loteCodigo: 'LT-2026-639-02',
       provaCodigo: '639',
@@ -644,7 +707,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   proofGradings: [
     {
       id: 'pg-01',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       codigoAnonimo: 'ANON-635-001',
       loteCodigo: 'LT-2026-635-01',
       provaCodigo: '635',
@@ -696,7 +759,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'pg-02',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       codigoAnonimo: 'ANON-635-002',
       loteCodigo: 'LT-2026-635-01',
       provaCodigo: '635',
@@ -742,7 +805,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   criteria: [
     {
       id: 'crit-01',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       provaCodigo: '635',
       provaNome: 'Matemática A',
       documentoNome: 'Criterios_635_1Fase_2026_v1.0.pdf',
@@ -758,7 +821,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'crit-02',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       provaCodigo: '635',
       provaNome: 'Matemática A',
       documentoNome: 'Criterios_635_1Fase_2026_v1.1_Adenda.pdf',
@@ -775,7 +838,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'crit-03',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       provaCodigo: '639',
       provaNome: 'Português',
       documentoNome: 'Criterios_639_1Fase_2026_v1.0.pdf',
@@ -794,7 +857,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   results: [
     {
       id: 'res-01',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       alunoRef: '2026-014',
       alunoNome: 'Tiago Manuel Teixeira',
       codigoAnonimo: 'ANON-635-001',
@@ -812,7 +875,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'res-02',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       alunoRef: '2026-019',
       alunoNome: 'Mariana Sofia Lopes',
       codigoAnonimo: 'ANON-635-002',
@@ -829,7 +892,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'res-03',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       alunoRef: '2026-027',
       alunoNome: 'Diogo Ferreira Costa',
       codigoAnonimo: 'ANON-639-011',
@@ -847,7 +910,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'res-04',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       alunoRef: '2026-031',
       alunoNome: 'Beatriz Martins Rocha',
       codigoAnonimo: 'ANON-639-012',
@@ -864,7 +927,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'res-esca-01',
-      institutionId: 'inst-esca',
+      institutionId: 'inst-esc-3',
       alunoRef: '2026-C08',
       alunoNome: 'João Pedro Antunes',
       codigoAnonimo: 'ANON-712-C01',
@@ -884,7 +947,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   pautas: [
     {
       id: 'pau-01',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       escolaNome: 'Agrupamento de Escolas Infante D. Henrique (Exemplo)',
       provaCodigo: '639',
       provaNome: 'Português',
@@ -899,7 +962,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'pau-02',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       escolaNome: 'Agrupamento de Escolas Infante D. Henrique (Exemplo)',
       provaCodigo: '635',
       provaNome: 'Matemática A',
@@ -917,7 +980,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   publications: [
     {
       id: 'pub-01',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       pautaId: 'pau-01',
       conjuntoLabel: '639 · Português · 1.ª Fase (v1)',
       canal: 'Portal autenticado aluno/EE',
@@ -932,7 +995,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   consultations: [
     {
       id: 'cons-01',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       codigoProcesso: 'CONS-2026-001',
       alunoRef: '2026-014',
       alunoNome: 'Tiago Manuel Teixeira',
@@ -949,7 +1012,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   availabilities: [
     {
       id: 'av-01',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       pedidoId: 'cons-01',
       codigoProcesso: 'CONS-2026-001',
       alunoNome: 'Tiago Manuel Teixeira',
@@ -967,7 +1030,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   scoreRectifications: [
     {
       id: 'srect-01',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       codigoProcesso: 'RET-COT-2026-01',
       provaNome: '635 · Matemática A',
       alunoNome: 'Tiago Manuel Teixeira',
@@ -982,7 +1045,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   reappraisals: [
     {
       id: 'reap-01',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       codigoProcesso: 'REAP-2026-004',
       provaCodigo: '639',
       provaNome: 'Português',
@@ -1000,7 +1063,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   reappraisalTrackings: [
     {
       id: 'rtr-01',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       processoCodigo: 'REAP-2026-004',
       requerente: 'Diogo Ferreira Costa (Proc. 2026-027)',
       provaNome: '639 · Português',
@@ -1015,7 +1078,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   jneComplaints: [
     {
       id: 'jne-01',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       codigoReclamacao: 'RECL-JNE-2026-01',
       processoOrigem: 'REAP-2026-004',
       requerente: 'Diogo Ferreira Costa (Proc. 2026-027)',
@@ -1030,7 +1093,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   classificationRectifications: [
     {
       id: 'crect-01',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       resultadoId: 'res-01',
       alunoNome: 'Tiago Manuel Teixeira',
       provaNome: '635 · Matemática A',
@@ -1047,9 +1110,9 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   interopJobs: [
     {
       id: 'int-01',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       destino: 'ENES (Ambiente de Testes)',
-      versaoEsquema: 'Esquema Teste v2.0-local (Não oficial)',
+      versaoEsquema: 'Esquema Teste v2.0-local',
       anoLetivo: '2025/2026',
       fase: '1.ª Fase',
       ficheiro: 'ENES_Teste_AEIDH_635_2026.csv',
@@ -1061,9 +1124,9 @@ export const INITIAL_SIGEN_STATE: SigenState = {
     },
     {
       id: 'int-02',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       destino: 'ENEB (Ambiente de Testes)',
-      versaoEsquema: 'Esquema Teste v2.0-local (Não oficial)',
+      versaoEsquema: 'Esquema Teste v2.0-local',
       anoLetivo: '2025/2026',
       fase: '1.ª Fase',
       ficheiro: 'ENEB_Simulacao_2026.csv',
@@ -1081,7 +1144,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   closures: [
     {
       id: 'cls-aeidh-f1',
-      institutionId: 'inst-aeidh',
+      institutionId: 'inst-esc-1',
       anoLetivo: '2025/2026',
       fase: '1.ª Fase',
       estado: 'Aberta',

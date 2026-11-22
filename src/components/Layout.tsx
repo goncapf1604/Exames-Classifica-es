@@ -19,8 +19,9 @@ import { ROLE_LABELS, ScreenId, ScreenSection } from '../types/sigen';
 import { SigenClassificacoesIcon, SigenLogo } from './SigenLogo';
 import { Button, StatusLabel } from './ui/SharedUI';
 import { downloadDocumentHtml, formatDateTimePT } from '../utils/exports';
+import { SyncBadge } from '../sync/SyncBadge';
 
-const SECTIONS_ORDER: ScreenSection[] = ['A', 'B', 'C', 'D', 'E'];
+const SECTIONS_ORDER: ScreenSection[] = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const {
@@ -45,7 +46,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     notificationsOpen,
     setNotificationsOpen,
     resetDemoData,
+    confirmAction,
     isPhaseClosed,
+    syncStatus,
+    syncDetail,
+    modoServidor,
   } = useSigen();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -56,6 +61,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     C: false,
     D: false,
     E: false,
+    F: false,
   });
 
   const navScreens = useMemo(() => {
@@ -207,10 +213,27 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
             </button>
             <button
               type="button"
-              onClick={resetDemoData}
-              title="Repor dados de exemplo"
+              onClick={() =>
+                confirmAction(
+                  modoServidor
+                    ? {
+                        title: 'Recarregar dados do servidor?',
+                        message: 'A cópia local é substituída pelos dados atuais da base de dados SIGEN. Nenhum registo é apagado.',
+                        confirmLabel: 'Recarregar',
+                        onConfirm: resetDemoData,
+                      }
+                    : {
+                        title: 'Repor dados de exemplo?',
+                        message: 'Os registos locais voltam ao conjunto inicial de exemplo.',
+                        confirmLabel: 'Repor dados',
+                        danger: true,
+                        onConfirm: resetDemoData,
+                      }
+                )
+              }
+              title={modoServidor ? 'Recarregar dados do servidor' : 'Repor dados de exemplo'}
               className="p-1.5 text-[#536477] bg-white border border-slate-300 rounded-md hover:bg-slate-100 hover:text-[#112A4A] cursor-pointer"
-              aria-label="Repor dados de exemplo"
+              aria-label={modoServidor ? 'Recarregar dados do servidor' : 'Repor dados de exemplo'}
             >
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
@@ -305,6 +328,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               <option value="Época Especial">Época Especial</option>
             </select>
 
+            <SyncBadge status={syncStatus} detail={syncDetail} />
+
             <button
               type="button"
               onClick={() => setNotificationsOpen(true)}
@@ -384,7 +409,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         {/* Quiet Institutional Footer */}
         <footer className="mt-auto border-t border-slate-200 bg-white px-4 lg:px-8 py-3.5 text-xs text-[#536477] flex flex-wrap items-center justify-between gap-2">
           <div>
-            SIGEN Classificações · Proposta de produto (Dados de exemplo — não substitui sistemas ou modelos oficiais do JNE)
+            SIGEN Classificações · Gestão de classificações de exames nacionais
           </div>
           <div className="tabular-nums">
             {activeInstitution?.designacao} · {activeYear} · {activePhase}
