@@ -31,7 +31,7 @@ import { exportCSV, exportJSON, formatDateTimePT, nowIso } from '../utils/export
  * K21 · Ficheiros ENEB/ENES e interoperabilidade
  * ========================================================================== */
 export const K21InteropScreen: React.FC = () => {
-  const { state, updateState, activeInstitutionId, activeYear, activePhase, logAudit, toast } = useSigen();
+  const { state, updateState, activeInstitutionId, activeYear, activePhase, logAudit, toast, navigate } = useSigen();
   const jobs = state.interopJobs.filter((j) => j.institutionId === activeInstitutionId);
   const lots = state.lots.filter((l) => l.institutionId === activeInstitutionId);
 
@@ -93,6 +93,12 @@ export const K21InteropScreen: React.FC = () => {
   return (
     <div className="space-y-6">
       <ScreenHeader screenId="K21" badgeText="Integração oficial bloqueada até certificação" />
+      <NoticeBar tone="info" title="Módulo ENES/ENEB">
+        Formatos versionados, importação atómica de ficheiros e reconciliação de resultados:{' '}
+        <button type="button" onClick={() => navigate('EN01')} className="font-semibold text-[#087E91] hover:underline">EN01</button>,{' '}
+        <button type="button" onClick={() => navigate('EN02')} className="font-semibold text-[#087E91] hover:underline">EN02</button> e{' '}
+        <button type="button" onClick={() => navigate('EN03')} className="font-semibold text-[#087E91] hover:underline">EN03</button>.
+      </NoticeBar>
 
       <NoticeBar tone="danger" title="Ambiente de Testes · Integração Oficial Bloqueada">
         Layouts oficiais ENEB/ENES, codificações e canais de troca não foram certificados nesta versão.

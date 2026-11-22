@@ -9,7 +9,7 @@ import { CLASSIFICACOES_BINDINGS as BINDINGS } from '../src/sync/bindings';
 
 const state: Record<string, any> = INITIAL_SIGEN_STATE;
 const out: string[] = ['-- Gerado por scripts/gerar-seed-sql.ts (SIGEN Classificações)', 'begin;'];
-for (const b of BINDINGS) {
+for (const b of BINDINGS.filter((x) => !x.readOnly)) {
   const rows = ((state[b.key] as any[]) ?? []).map((i) => b.toRow(i));
   if (!rows.length) continue;
   const cols = Array.from(new Set(rows.flatMap((r) => Object.keys(r))));

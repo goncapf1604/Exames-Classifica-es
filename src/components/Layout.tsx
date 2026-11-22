@@ -21,7 +21,7 @@ import { Button, StatusLabel } from './ui/SharedUI';
 import { downloadDocumentHtml, formatDateTimePT } from '../utils/exports';
 import { SyncBadge } from '../sync/SyncBadge';
 
-const SECTIONS_ORDER: ScreenSection[] = ['A', 'B', 'C', 'D', 'E'];
+const SECTIONS_ORDER: ScreenSection[] = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const {
@@ -61,6 +61,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     C: false,
     D: false,
     E: false,
+    F: false,
   });
 
   const navScreens = useMemo(() => {

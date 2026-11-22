@@ -1,4 +1,7 @@
 import {
+  EnesFormato,
+  EnesImportacao,
+  EnesReconciliacao,
   AnonymousMapping,
   AuditLog,
   CalendarConfig,
@@ -50,11 +53,54 @@ export interface SigenState {
   classificationRectifications: ClassificationRectification[];
   interopJobs: InteropJob[];
   closures: PhaseClosure[];
+  enesFormatos: EnesFormato[];
+  enesImportacoes: EnesImportacao[];
+  enesReconciliacoes: EnesReconciliacao[];
   lastSyncAt: string;
 }
 
 export const INITIAL_SIGEN_STATE: SigenState = {
   lastSyncAt: '2026-11-21T09:15:00.000Z',
+
+  // EN01 · Formato de TESTES do SIGEN — não é o layout oficial ENES/ENEB (adenda SIGEN 04, §2)
+  enesFormatos: [
+    {
+      id: 'fmt-teste-enes-2526',
+      anoLetivo: '2025/2026',
+      fase: '1.ª Fase',
+      sistemaOrigem: 'ENES',
+      versaoFormato: 'SIGEN-TESTE-1.0',
+      extensao: '.csv',
+      codificacao: 'utf-8',
+      delimitador: ';',
+      cabecalhos: ['NUM_PROCESSO', 'NOME', 'COD_ESCOLA', 'CURSO', 'COD_PROVA', 'FASE', 'DATA', 'CLASSIFICACAO'],
+      mapaColunas: {
+        alunoRef: 'NUM_PROCESSO',
+        nome: 'NOME',
+        codigoEscola: 'COD_ESCOLA',
+        curso: 'CURSO',
+        provaCodigo: 'COD_PROVA',
+        fase: 'FASE',
+        data: 'DATA',
+        classificacao: 'CLASSIFICACAO',
+      },
+      regrasValidacao: [
+        'Classificação inteira entre 0 e 200, ou "Faltou" / "Anulada"',
+        'Sem linhas duplicadas (processo + prova + fase)',
+        'Código de escola igual ao da escola ativa',
+        'Código de prova conhecido no calendário do ano/fase',
+      ],
+      dataVigencia: '2026-06-01',
+      estado: 'Ativo (testes)',
+      referenciaDocumental: 'Formato interno de testes — aguarda especificação oficial (adenda SIGEN 04, §10)',
+      versao: 1,
+      historico: [
+        { dataHora: '2026-11-21T09:00:00.000Z', autor: 'Helena Nogueira', acao: 'Formato de testes criado' },
+      ],
+    },
+  ],
+  enesImportacoes: [],
+  enesReconciliacoes: [],
 
   // Instituições partilhadas com o SIGEN Exames (mesmos ids na base de dados comum)
   institutions: [

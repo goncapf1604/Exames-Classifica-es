@@ -303,6 +303,9 @@ export const CLASSIFICACOES_BINDINGS: Binding[] = [
   registosBinding(APP, 'classificationRectifications', 'institutionId'),
   registosBinding(APP, 'interopJobs', 'institutionId'),
   registosBinding(APP, 'closures', 'institutionId'),
+  registosBinding(APP, 'enesFormatos', 'institutionId'),
+  registosBinding(APP, 'enesImportacoes', 'institutionId'),
+  registosBinding(APP, 'enesReconciliacoes', 'institutionId'),
 ];
 
 /** Perfis (canónicos) com acesso ao SIGEN Classificações. */

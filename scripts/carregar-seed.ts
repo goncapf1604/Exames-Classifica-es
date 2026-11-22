@@ -25,7 +25,7 @@ const db = createClient(process.env.VITE_SUPABASE_URL || SIGEN_SUPABASE_URL, ser
 });
 const state = (typeof seed === 'function' ? (seed as () => unknown)() : seed) as Record<string, any>;
 
-for (const b of BINDINGS) {
+for (const b of BINDINGS.filter((x) => !x.readOnly)) {
   const rows = ((state[b.key] as any[]) ?? []).map((i) => b.toRow(i));
   if (!rows.length) continue;
   const { error } = await db.from(b.table).upsert(rows, { onConflict: b.onConflict ?? 'id', ignoreDuplicates: true });

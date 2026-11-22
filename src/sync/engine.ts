@@ -33,6 +33,8 @@ export interface Binding {
   limit?: number;
   /** Registos só de acrescentar (ex.: auditoria): insere sem nunca atualizar nem apagar. */
   insertOnly?: boolean;
+  /** Dados da outra app: só leitura (nunca são enviados). */
+  readOnly?: boolean;
 }
 
 export type SyncStatus = 'desligado' | 'a ligar' | 'sincronizado' | 'a enviar' | 'erro' | 'offline';
@@ -204,6 +206,7 @@ export class SyncEngine<S extends Record<string, any>> {
     let sent = false;
 
     for (const b of this.bindings) {
+      if (b.readOnly) continue;
       const snap = this.snapshot.get(b.key)!;
       const items = (state[b.key] as any[]) ?? [];
       const current = new Map<string, { item: any; json: string }>();

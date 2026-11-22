@@ -7,6 +7,7 @@ import React from 'react';
 import { SigenProvider, useSigen } from './context/SigenContext';
 import { Layout } from './components/Layout';
 import { LoginScreen } from './screens/LoginScreen';
+import { EN01FormatosScreen, EN02ImportacaoScreen, EN03ReconciliacaoScreen } from './screens/EnesScreens';
 import { AuthPanel } from './sync/AuthPanel';
 import { CLASSIFICACOES_PERFIS } from './sync/bindings';
 import { SigenLogo } from './components/SigenLogo';
@@ -202,6 +203,12 @@ const SigenRouter: React.FC = () => {
         return <K20RectificationsBookScreen />;
       case 'K21':
         return <K21InteropScreen />;
+      case 'EN01':
+        return <EN01FormatosScreen />;
+      case 'EN02':
+        return <EN02ImportacaoScreen />;
+      case 'EN03':
+        return <EN03ReconciliacaoScreen />;
       case 'K22':
         return <K22ReportsScreen />;
       case 'K23':
