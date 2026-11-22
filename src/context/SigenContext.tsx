@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { terminarSessaoCorreio } from '../utils/correioInterno';
 import { INITIAL_SIGEN_STATE, SigenState } from '../data/seedData';
 import { getScreenDef } from '../data/screensCatalog';
 import {
@@ -47,7 +48,9 @@ interface SigenContextValue {
     email: string,
     password: string,
     mfaCode: string,
-    institutionId?: string
+    institutionId?: string,
+    /** apenasVerificar: só valida email/palavra-passe; codigoValidado: o código veio do Correio Interno. */
+    opts?: { apenasVerificar?: boolean; codigoValidado?: boolean }
   ) => { ok: boolean; error?: string; requireMfa?: boolean };
   logout: () => void;
   logAudit: (entry: Omit<AuditLog, 'id' | 'dataHora' | 'institutionId' | 'utilizador' | 'perfil'>) => void;
@@ -209,7 +212,7 @@ export const SigenProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const login: SigenContextValue['login'] = (email, password, mfaCode, institutionId) => {
+  const login: SigenContextValue['login'] = (email, password, mfaCode, institutionId, opts) => {
     const cleanEmail = email.trim().toLowerCase();
     const user = state.users.find((u) => u.email.toLowerCase() === cleanEmail);
 
@@ -234,7 +237,9 @@ export const SigenProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       };
     }
 
-    if (user.mfaAtivo) {
+    if (opts?.apenasVerificar) return { ok: true, requireMfa: true };
+
+    if (user.mfaAtivo && !opts?.codigoValidado) {
       if (!mfaCode.trim()) {
         return {
           ok: false,
@@ -242,7 +247,8 @@ export const SigenProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           error: 'Introduza o código MFA de 6 dígitos para concluir a autenticação.',
         };
       }
-      if (mfaCode.trim() !== user.mfaCodigoDemo && mfaCode.trim() !== '000000') {
+      // (removido o código universal "000000", que deixava entrar qualquer conta com MFA)
+      if (mfaCode.trim() !== user.mfaCodigoDemo) {
         return {
           ok: false,
           requireMfa: true,
@@ -287,6 +293,7 @@ export const SigenProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const logout = () => {
+    terminarSessaoCorreio();
     if (currentUser) {
       logAudit({
         entidade: 'Sessão C01',
