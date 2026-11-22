@@ -306,9 +306,12 @@ export const CLASSIFICACOES_BINDINGS: Binding[] = [
   registosBinding(APP, 'enesFormatos', 'institutionId'),
   registosBinding(APP, 'enesImportacoes', 'institutionId'),
   registosBinding(APP, 'enesReconciliacoes', 'institutionId'),
+  // Condições de emissão ENES definidas no SIGEN Exames (só leitura)
+  { ...registosBinding('exames', 'condicoesEnes'), key: 'condicoesEnes', readOnly: true },
 ];
 
 /** Perfis (canónicos) com acesso ao SIGEN Classificações. */
 export const CLASSIFICACOES_PERFIS = Object.values(ROLE_TO_DB);
 
-export const CLASSIFICACOES_REGISTOS_FILTER = `app=eq.${APP}`;
+/** Sem filtro: também recebe em tempo real as condições de emissão definidas no SIGEN Exames. */
+export const CLASSIFICACOES_REGISTOS_FILTER: string | undefined = undefined;

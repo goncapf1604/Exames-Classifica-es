@@ -54,6 +54,7 @@ import {
   gerarExemplo,
   ResultadoAnalise,
 } from '../utils/enes';
+import { capacidadesEnes, CONDICOES_ID, emissaoOficialDesbloqueada } from '../utils/condicoesEnes';
 
 const novoId = (p: string) => `${p}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 
@@ -468,6 +469,9 @@ export const EN02ImportacaoScreen: React.FC = () => {
   const input = useRef<HTMLInputElement>(null);
   const formato = state.enesFormatos.find((f) => f.id === formatoId);
   const autor = currentUser?.nome ?? 'Sistema';
+  // "Importar ficheiro oficial real" exige as quatro condições confirmadas (EN05 · SIGEN Exames) e formato homologado
+  const condicoesOk = emissaoOficialDesbloqueada(state.condicoesEnes.find((c) => c.id === CONDICOES_ID));
+  const podeReal = condicoesOk && !!formato && formatoPermiteProducao(formato);
 
   const atualizarLote = (l: EnesImportacao, acao: string, nota?: string): EnesImportacao => {
     const novo = { ...l, historico: [...l.historico, { dataHora: nowIso(), autor, acao, nota }] };
@@ -483,8 +487,12 @@ export const EN02ImportacaoScreen: React.FC = () => {
   const validarEstrutura = async () => {
     if (!formato) return toast({ type: 'error', title: 'Selecione um formato ativo (EN01)' });
     if (!ficheiro) return toast({ type: 'error', title: 'Selecione o ficheiro' });
-    if (modo === 'Produção' && !formatoPermiteProducao(formato)) {
-      return toast({ type: 'error', title: 'Formato não homologado', detail: 'Só pode ser usado em ambiente de testes.' });
+    if (modo === 'Produção' && !podeReal) {
+      return toast({
+        type: 'error',
+        title: 'Importação de ficheiro oficial real bloqueada',
+        detail: condicoesOk ? 'O formato tem de estar homologado (EN01).' : 'As condições de emissão ainda não estão todas confirmadas.',
+      });
     }
     const bytes = await ficheiro.arrayBuffer();
     const checksum = await checksumSha256(bytes);
@@ -611,6 +619,14 @@ export const EN02ImportacaoScreen: React.FC = () => {
   return (
     <div>
       <ScreenHeader screenId="EN02" badgeText={`${activeYear} · ${activePhase}`} />
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-4 text-xs" data-testid="capacidades-enes">
+        {capacidadesEnes(condicoesOk).map((c) => (
+          <div key={c.acao} className={`rounded-md border px-3 py-2 ${c.disponivel ? 'border-[#A6F4C5] bg-[#ECFDF3] text-[#067647]' : 'border-slate-200 bg-slate-50 text-[#536477]'}`}>
+            <div className="font-semibold">{c.disponivel ? '✓' : '🔒'} {c.acao}</div>
+            <div className="opacity-80">{c.ecra}</div>
+          </div>
+        ))}
+      </div>
       <NoticeBar tone="info" title="Importação atómica e auditada">
         O lote só é importado se não tiver erros. Importar não altera resultados: as linhas seguem para reconciliação (EN03),
         onde cada alteração exige decisão justificada.
@@ -639,10 +655,10 @@ export const EN02ImportacaoScreen: React.FC = () => {
               ))}
             </select>
           </FormField>
-          <FormField label="Ambiente">
+          <FormField label="Tipo de ficheiro" hint={podeReal ? undefined : 'Ficheiro oficial real: bloqueado até estarem confirmadas as condições de emissão e o formato estar homologado.'}>
             <select className={inputClass} value={modo} onChange={(e) => setModo(e.target.value as EnesImportacao['modo'])}>
-              <option>Teste</option>
-              <option disabled={!formato || !formatoPermiteProducao(formato)}>Produção</option>
+              <option value="Teste">Ficheiro de teste (dados fictícios)</option>
+              <option value="Produção" disabled={!podeReal}>Ficheiro oficial real</option>
             </select>
           </FormField>
           <FormField label="Ficheiro" required>
@@ -676,7 +692,7 @@ export const EN02ImportacaoScreen: React.FC = () => {
                     <div>
                       <span className="font-mono font-semibold text-[#087E91]">{l.id}</span> · {l.ficheiro}
                       <div className="text-[#536477] mt-0.5">
-                        {l.origem} {l.formatoVersao} · {l.modo} · {l.linhas.length} linhas · {l.erros.length} erros · {formatDateTimePT(l.dataHora)} · {l.operador}
+                        {l.origem} {l.formatoVersao} · {l.modo === 'Produção' ? 'Ficheiro oficial real' : 'Ficheiro de teste'} · {l.linhas.length} linhas · {l.erros.length} erros · {formatDateTimePT(l.dataHora)} · {l.operador}
                       </div>
                       <div className="text-[#536477] font-mono mt-0.5" title={l.checksum}>
                         SHA-256 {l.checksum.slice(0, 24)}…

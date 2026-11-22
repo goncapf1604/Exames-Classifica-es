@@ -409,7 +409,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         {/* Quiet Institutional Footer */}
         <footer className="mt-auto border-t border-slate-200 bg-white px-4 lg:px-8 py-3.5 text-xs text-[#536477] flex flex-wrap items-center justify-between gap-2">
           <div>
-            SIGEN Classificações · Proposta de produto (Dados de exemplo — não substitui sistemas ou modelos oficiais do JNE)
+            SIGEN Classificações · Gestão de classificações de exames nacionais
           </div>
           <div className="tabular-nums">
             {activeInstitution?.designacao} · {activeYear} · {activePhase}

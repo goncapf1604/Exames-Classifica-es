@@ -1422,7 +1422,7 @@ export const C06NotificationsScreen: React.FC = () => {
         ...f,
         assunto: 'Aviso interno: Lote pronto para distribuição',
         mensagem:
-          'Informa-se que foi conferido um lote de provas na secretaria de exames. Aceda ao ecrã K05 com as suas credenciais para consultar detalhes. Este aviso não substitui comunicações oficiais.',
+          'Informa-se que foi conferido um lote de provas na secretaria de exames. Aceda ao ecrã K05 com as suas credenciais para consultar detalhes.',
       }));
     } else if (tpl === 'consulta') {
       setForm((f) => ({
@@ -1613,7 +1613,7 @@ export const C06NotificationsScreen: React.FC = () => {
             {form.mensagem || '(Mensagem vazia)'}
           </div>
           <div className="text-[11px] text-[#536477]">
-            Rodapé automático: Aviso gerado via SIGEN Classificações. Não substitui notificações oficiais.
+            Rodapé automático: Aviso gerado via SIGEN Classificações.
           </div>
         </div>
       </Modal>

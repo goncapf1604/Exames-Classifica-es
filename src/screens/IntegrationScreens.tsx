@@ -37,7 +37,7 @@ export const K21InteropScreen: React.FC = () => {
 
   const [form, setForm] = useState({
     destino: 'ENES (Ambiente de Testes)' as InteropJob['destino'],
-    versaoEsquema: 'Esquema Teste v2.0-local (Não oficial)',
+    versaoEsquema: 'Esquema Teste v2.0-local',
     loteRef: lots[0]?.codigoLote || 'LT-2026-635-01',
     ficheiro: 'ENES_Teste_2026_1Fase.csv',
   });
@@ -47,7 +47,7 @@ export const K21InteropScreen: React.FC = () => {
     if (mode === 'exportar') {
       const instResults = state.results.filter((r) => r.institutionId === activeInstitutionId);
       exportJSON(`sigen_teste_${form.loteRef}_${Date.now()}`, {
-        aviso: 'AMBIENTE DE TESTES — NÃO É LAYOUT OFICIAL ENEB/ENES',
+        aviso: 'AMBIENTE DE TESTES ENEB/ENES',
         destino: form.destino,
         versaoEsquema: form.versaoEsquema,
         anoLetivo: activeYear,
@@ -117,7 +117,7 @@ export const K21InteropScreen: React.FC = () => {
           </FormField>
           <FormField label="Versão de esquema" required>
             <select value={form.versaoEsquema} onChange={(e) => setForm({ ...form, versaoEsquema: e.target.value })} className={inputClass}>
-              <option>Esquema Teste v2.0-local (Não oficial)</option>
+              <option>Esquema Teste v2.0-local</option>
               <option>Esquema Reconciliação Sandbox v1</option>
             </select>
           </FormField>

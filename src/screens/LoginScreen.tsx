@@ -97,7 +97,7 @@ export const LoginScreen: React.FC = () => {
 
           <div className="mt-10 pt-6 border-t border-white/10 text-[11px] text-slate-400 leading-relaxed">
             Aviso: Ambiente de demonstração com dados exclusivamente fictícios. Proposta de produto
-            SIGEN v2.0 — não substitui sistemas ou comunicações oficiais do JNE.
+            SIGEN v2.0 — gestão de classificações de exames nacionais.
           </div>
         </div>
 

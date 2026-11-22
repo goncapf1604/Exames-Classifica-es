@@ -1,3 +1,4 @@
+import type { CondicoesLike } from '../utils/condicoesEnes';
 import {
   EnesFormato,
   EnesImportacao,
@@ -56,6 +57,8 @@ export interface SigenState {
   enesFormatos: EnesFormato[];
   enesImportacoes: EnesImportacao[];
   enesReconciliacoes: EnesReconciliacao[];
+  /** Condições de emissão ENES definidas no SIGEN Exames (só leitura). */
+  condicoesEnes: CondicoesLike[];
   lastSyncAt: string;
 }
 
@@ -101,6 +104,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
   ],
   enesImportacoes: [],
   enesReconciliacoes: [],
+  condicoesEnes: [],
 
   // Instituições partilhadas com o SIGEN Exames (mesmos ids na base de dados comum)
   institutions: [
@@ -359,7 +363,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
       canal: 'Plataforma',
       assunto: 'Lote LT-2026-635-01 conferido e pronto para distribuição',
       mensagem:
-        'Informa-se que o lote LT-2026-635-01 (Matemática A · 32 provas) concluiu a conferência de receção sem divergências. Aviso informativo interno; não substitui comunicações oficiais.',
+        'Informa-se que o lote LT-2026-635-01 (Matemática A · 32 provas) concluiu a conferência de receção sem divergências.',
       anexos: ['Termo_Rececao_LT-2026-635-01.pdf'],
       dataEnvio: '2026-11-20T11:20:00.000Z',
       estado: 'Enviada',
@@ -1108,7 +1112,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
       id: 'int-01',
       institutionId: 'inst-esc-1',
       destino: 'ENES (Ambiente de Testes)',
-      versaoEsquema: 'Esquema Teste v2.0-local (Não oficial)',
+      versaoEsquema: 'Esquema Teste v2.0-local',
       anoLetivo: '2025/2026',
       fase: '1.ª Fase',
       ficheiro: 'ENES_Teste_AEIDH_635_2026.csv',
@@ -1122,7 +1126,7 @@ export const INITIAL_SIGEN_STATE: SigenState = {
       id: 'int-02',
       institutionId: 'inst-esc-1',
       destino: 'ENEB (Ambiente de Testes)',
-      versaoEsquema: 'Esquema Teste v2.0-local (Não oficial)',
+      versaoEsquema: 'Esquema Teste v2.0-local',
       anoLetivo: '2025/2026',
       fase: '1.ª Fase',
       ficheiro: 'ENEB_Simulacao_2026.csv',

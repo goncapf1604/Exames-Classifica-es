@@ -49,12 +49,25 @@ Registos criados pelos gatilhos têm id `sync-…` e a coluna `origem_sync` pree
 | EN02 | Classificações | Importação de ficheiros ENES/ENEB: valida tipo, tamanho, codificação, colunas, duplicados, prova, escola, fase e classificações (0–200, Faltou, Anulada). Gera um SHA-256 de cada ficheiro e recusa ficheiros idênticos já importados. A importação é atómica e a anulação de um lote é justificada e reverte o que já tinha sido aplicado. |
 | EN03 | Classificações | Reconciliação: correspondente / divergente / sem correspondência. Nada é alterado sem decisão justificada; substituir uma classificação validada ou publicada exige Coordenação ou Admin central e cria nova versão no histórico do resultado. |
 | EN04 | Exames | Pedido de Ficha ENES (complementa o E10). Faz a verificação de dados e de documentos, pede os documentos em falta ao EE com um aviso sem dados pessoais, e trata da submissão, validação, devolução e encerramento. Quem submete não pode validar. |
-| EN05 | Exames | Minuta com marca de água **NÃO OFICIAL**, com os resultados validados ou publicados que vêm das Classificações. Circuito: conferência → aprovação interna (por três pessoas diferentes) → registo da referência de emissão oficial externa. O botão "Emitir Ficha ENES oficial" está bloqueado (`FICHA_ENES_EMISSAO_OFICIAL_AUTORIZADA = false`). |
+| EN05 | Exames | Ficha ENES no modelo da escola (A4, secções 1–9, área de conferência). Usa os resultados validados ou publicados que vêm das Classificações, o curso, a classificação final e os distritos. Circuito: minuta → conferência → aprovação interna (por três pessoas diferentes) → **Emitir Ficha ENES oficial**, com a referência oficial registada (nunca gerada). |
 | EN06 | Exames | Versões, autores, revisores, referências externas, substituições, prazo de conservação e exportação de auditoria. O Auditor/EPD só lê. |
 
-Dependências externas antes de uso oficial (§10): especificação oficial ou amostra autorizada
-dos ficheiros ENES/ENEB, modelo e circuito oficial da Ficha ENES, e validação com a escola e com o JNE.
-O formato incluído (`SIGEN-TESTE-1.0`) é **só de testes**.
+**Condições de emissão** (painel no EN05, confirmadas só pelo Administrador central, sempre com
+referência documental; regra imposta também na base de dados):
+1. Modelo oficial da Ficha ENES confirmado.
+2. Regras de emissão e validação verificadas.
+3. Autorização para o procedimento de emissão (ou "não aplicável").
+4. Testes de conformidade concluídos.
+
+| Ação | Antes das condições | Depois |
+|---|---|---|
+| Importar ficheiro de teste | ✓ | ✓ |
+| Validar dados fictícios | ✓ | ✓ |
+| Gerar minuta ENES | ✓ | ✓ |
+| Importar ficheiro oficial real (EN02, formato homologado) | bloqueado | ✓ |
+| Emitir Ficha ENES oficial (EN05) | bloqueado | ✓ |
+
+O formato incluído (`SIGEN-TESTE-1.0`) serve para testes com dados fictícios.
 
 ## Como funciona nas apps
 
