@@ -17,6 +17,28 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { useSigen } from '../context/SigenContext';
+import { correioAtivo, eEmailEscola, enviarEmailInstitucional } from '../utils/correioInterno';
+
+/** Entrega por email no Correio Interno (noreply@esfp.pt). Devolve true se chegou a alguém. */
+async function entregarPorEmail(
+  para: string[],
+  assunto: string,
+  mensagem: string,
+  ref: string,
+  toast: (m: { type: 'success' | 'error' | 'info' | 'warning'; title: string; detail?: string }) => void
+): Promise<boolean> {
+  const enderecos = para.filter(eEmailEscola);
+  if (!correioAtivo() || !enderecos.length) return false;
+  try {
+    const out = await enviarEmailInstitucional({ para: enderecos, assunto, mensagem, area: 'Classificações', ref });
+    if (out.entregues.length) toast({ type: 'success', title: 'Email entregue no Correio Interno', detail: out.entregues.join(', ') });
+    else toast({ type: 'error', title: 'Email não entregue', detail: `Sem caixa @esfp.pt ativa: ${[...out.naoEncontrados, ...out.recusados].join(', ')}` });
+    return out.entregues.length > 0;
+  } catch (err: any) {
+    toast({ type: 'error', title: 'Email não enviado', detail: err?.message || String(err) });
+    return false;
+  }
+}
 import {
   AuditLog,
   CalendarConfig,
@@ -809,6 +831,16 @@ export const C04UsersScreen: React.FC = () => {
             : toast({ type: 'error', title: 'Conta de acesso não criada', detail: r.erro })
         );
       }
+      void entregarPorEmail(
+        [created.email],
+        'Convite — SIGEN Classificações',
+        `Olá ${created.nome},\n\nFoi-lhe atribuído acesso à aplicação SIGEN Classificações com o perfil ${ROLE_LABELS[created.perfil]}.\n\n` +
+          (modoServidor
+            ? 'Para entrar, use o seu email institucional e a palavra-passe temporária que lhe será entregue pela escola. No primeiro acesso terá de mudar a palavra-passe e configurar a verificação em dois passos.'
+            : 'Para entrar, use o seu email institucional; o código de acesso é enviado para este Correio Interno.'),
+        `convite:${created.id}`,
+        toast
+      );
     }
     setModalOpen(false);
   };
@@ -925,6 +957,13 @@ export const C04UsersScreen: React.FC = () => {
                             detalhe: `Notificação de convite reenviada para ${u.email}.`,
                           });
                           toast({ type: 'info', title: `Convite reenviado para ${u.email}` });
+                          void entregarPorEmail(
+                            [u.email],
+                            'Convite — SIGEN Classificações',
+                            `Olá ${u.nome},\n\nRelembramos que tem acesso à aplicação SIGEN Classificações com o perfil ${ROLE_LABELS[u.perfil]}. Entre com o seu email institucional.`,
+                            `convite:${u.id}:${Date.now()}`,
+                            toast
+                          );
                         }}
                       >
                         Reenviar convite
@@ -1464,6 +1503,12 @@ export const C06NotificationsScreen: React.FC = () => {
       origem: 'Dados locais',
     };
     updateState((prev) => ({ ...prev, notifications: [created, ...prev.notifications] }));
+    if (created.canal === 'Email institucional' && mode === 'send' && correioAtivo()) {
+      const para = created.destinatario.split(/[,;\s]+/).filter((x) => x.includes('@'));
+      void entregarPorEmail(para, created.assunto, created.mensagem, created.id, toast).then((ok) => {
+        if (!ok) updateState((prev) => ({ ...prev, notifications: prev.notifications.map((x) => (x.id === created.id ? { ...x, estado: 'Falha' } : x)) }));
+      });
+    }
     logAudit({
       entidade: created.assunto,
       ecra: 'C06',

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { correioAtivo, eEmailEscola, pedirCodigoAcesso, validarCodigoAcesso } from '../utils/correioInterno';
 import { Eye, EyeOff, KeyRound, Lock, ShieldCheck } from 'lucide-react';
 import { useSigen } from '../context/SigenContext';
 import { ROLE_LABELS } from '../types/sigen';
@@ -29,8 +30,28 @@ export const LoginScreen: React.FC = () => {
   }, [matchedUserPreview, state.institutions]);
 
   const isLockedOut = attempts >= 5;
+  // Código de acesso enviado para o Correio Interno (contas @esfp.pt com VITE_CORREIO_URL definido).
+  const viaCorreio = correioAtivo() && eEmailEscola(email);
+  const [codigoEnviadoPara, setCodigoEnviadoPara] = useState<string | null>(null);
+  const [codigoInfo, setCodigoInfo] = useState('');
+  const [aProcessar, setAProcessar] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const enviarCodigo = async () => {
+    setAProcessar(true);
+    try {
+      const out = await pedirCodigoAcesso(email);
+      setCodigoEnviadoPara(email.trim().toLowerCase());
+      setMfaCode('');
+      setCodigoInfo(`${out.message} Válido até ${new Date(out.expiresAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}.`);
+      setError(null);
+    } catch (err: any) {
+      setError(err?.message || 'Não foi possível enviar o código.');
+    } finally {
+      setAProcessar(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLockedOut) {
       setError('Limite de tentativas excedido. Aguarde antes de tentar novamente.');
@@ -38,6 +59,37 @@ export const LoginScreen: React.FC = () => {
     }
     if (!email.trim() || !password.trim()) {
       setError('Preencha o email profissional e a palavra-passe.');
+      return;
+    }
+
+    if (viaCorreio) {
+      const check = login(email, password, '', institutionId, { apenasVerificar: true });
+      if (!check.ok) {
+        setAttempts((a) => a + 1);
+        setError(check.error || 'Falha na autenticação.');
+        return;
+      }
+      if (codigoEnviadoPara !== email.trim().toLowerCase() || mfaCode.length !== 6) {
+        if (codigoEnviadoPara !== email.trim().toLowerCase()) await enviarCodigo();
+        else setError('Introduza o código de 6 dígitos recebido no Correio Interno.');
+        return;
+      }
+      setAProcessar(true);
+      try {
+        await validarCodigoAcesso(email, mfaCode);
+      } catch (err: any) {
+        setAttempts((a) => a + 1);
+        setError(err?.message || 'Código inválido ou expirado.');
+        setAProcessar(false);
+        return;
+      }
+      setAProcessar(false);
+      const res2 = login(email, password, '', institutionId, { codigoValidado: true });
+      if (!res2.ok) setError(res2.error || 'Falha na autenticação.');
+      else {
+        setError(null);
+        setAttempts(0);
+      }
       return;
     }
 
@@ -159,10 +211,14 @@ export const LoginScreen: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
-                    label="Código MFA (6 dígitos)"
+                    label={viaCorreio ? 'Código enviado para o email (6 dígitos)' : 'Código MFA (6 dígitos)'}
                     conditional
                     hint={
-                      matchedUserPreview?.mfaAtivo
+                      viaCorreio
+                        ? codigoEnviadoPara
+                          ? codigoInfo || 'Consulte o Correio Interno.'
+                          : 'Carregue em "Entrar" para receber o código no Correio Interno (noreply@esfp.pt).'
+                        : matchedUserPreview?.mfaAtivo
                         ? `MFA ativo nesta conta (demo: ${matchedUserPreview.mfaCodigoDemo})`
                         : 'Obrigatório quando MFA está ativado'
                     }
@@ -204,9 +260,14 @@ export const LoginScreen: React.FC = () => {
                   >
                     Recuperar acesso
                   </button>
-                  <Button type="submit" variant="primary" disabled={isLockedOut}>
+                  {viaCorreio && codigoEnviadoPara && (
+                    <Button type="button" variant="secondary" disabled={aProcessar} onClick={() => void enviarCodigo()}>
+                      Reenviar código
+                    </Button>
+                  )}
+                  <Button type="submit" variant="primary" disabled={isLockedOut || aProcessar}>
                     <KeyRound className="w-4 h-4" />
-                    Entrar na plataforma
+                    {viaCorreio && !codigoEnviadoPara ? 'Enviar código e continuar' : 'Entrar na plataforma'}
                   </Button>
                 </div>
               </form>
