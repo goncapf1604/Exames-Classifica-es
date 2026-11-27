@@ -6,6 +6,7 @@ export const SECTION_TITLES: Record<ScreenSection, string> = {
   C: 'C. Correção e resultados',
   D: 'D. Consulta, reapreciação e reclamação',
   E: 'E. Integração e gestão',
+  F: 'F. ENES/ENEB — importação e reconciliação',
 };
 
 export const SCREENS_CATALOG: ScreenDefinition[] = [
@@ -307,6 +308,35 @@ export const SCREENS_CATALOG: ScreenDefinition[] = [
     objective: 'Fechar operações e preservar evidências.',
     allowedRoles: ['ADMIN_CENTRAL', 'DIRECAO'],
     outputDoc: 'Termo de encerramento',
+  },
+
+  // F. Módulo ENES/ENEB (adenda SIGEN 04) — complementa K21
+  {
+    id: 'EN01',
+    section: 'F',
+    shortTitle: 'Formatos e versões',
+    title: 'Configuração de formatos e versões ENES/ENEB',
+    objective: 'Definir, testar e homologar internamente os formatos de ficheiro, sem inferir layouts oficiais.',
+    allowedRoles: ['ADMIN_CENTRAL', 'ADMIN_AGRUPAMENTO'],
+    outputDoc: 'Ficha de formato versionada',
+  },
+  {
+    id: 'EN02',
+    section: 'F',
+    shortTitle: 'Importação ENES/ENEB',
+    title: 'Importação de ficheiro ENES/ENEB',
+    objective: 'Validar, simular e importar lotes de resultados de forma atómica e auditada.',
+    allowedRoles: ['ADMIN_CENTRAL', 'SECRETARIADO', 'COORDENACAO'],
+    outputDoc: 'Relatório de importação e erros',
+  },
+  {
+    id: 'EN03',
+    section: 'F',
+    shortTitle: 'Reconciliação',
+    title: 'Reconciliação de alunos, provas e classificações',
+    objective: 'Comparar resultados importados com os registos locais e decidir com justificação.',
+    allowedRoles: ['ADMIN_CENTRAL', 'SECRETARIADO', 'COORDENACAO'],
+    outputDoc: 'Mapa de reconciliação e pendências',
   },
 ];
 

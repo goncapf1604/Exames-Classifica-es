@@ -6,9 +6,15 @@
  * - Notificações (convocatórias de vigilância, avisos, comunicações C06): entregues na caixa
  *   de email institucional dos destinatários @esfp.pt.
  *
+ * - Com o login real (base de dados partilhada SIGEN), o envio usa a sessão Supabase do
+ *   utilizador: o correio confirma-a junto do Supabase e exige a verificação em dois passos
+ *   concluída. O código por email só é usado no modo sem base de dados partilhada.
+ *
  * Ativa-se definindo VITE_CORREIO_URL (ex.: https://correio.esfp.pt) no build. Sem ela,
  * a app mantém o comportamento de demonstração.
  */
+import { sigenDb } from '../sync/client';
+
 const APP_ID = 'sigen-classificacoes';
 const TOKEN_KEY = `esfp_correio_token_${APP_ID}`;
 
@@ -31,7 +37,11 @@ async function post<T = any>(path: string, body: unknown, token?: string | null)
   try {
     res = await fetch(`${baseUrl()}/api/integration${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-ESFP-App': APP_ID,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(body),
     });
   } catch {
@@ -73,8 +83,21 @@ function tokenAtual(): string | null {
   }
 }
 
+/** Token para enviar: o do código por email ou, com o login real, o da sessão Supabase. */
+async function tokenParaEnvio(): Promise<string | null> {
+  const proprio = tokenAtual();
+  if (proprio) return proprio;
+  if (!sigenDb) return null;
+  try {
+    const { data } = await sigenDb.auth.getSession();
+    return data.session?.access_token || null;
+  } catch {
+    return null;
+  }
+}
+
 export function podeEnviarEmails(): boolean {
-  return correioAtivo() && Boolean(tokenAtual());
+  return correioAtivo() && (Boolean(tokenAtual()) || Boolean(sigenDb));
 }
 
 export interface ResultadoEnvio {
@@ -86,8 +109,8 @@ export interface ResultadoEnvio {
 /** Envia uma notificação para endereços @esfp.pt (a sessão tem de ter entrado com código do correio). */
 export async function enviarEmailInstitucional(n: { para: string[]; assunto: string; mensagem: string; area?: string; ref?: string }): Promise<ResultadoEnvio> {
   if (!correioAtivo()) throw new Error('Correio Interno não configurado (VITE_CORREIO_URL).');
-  const token = tokenAtual();
-  if (!token) throw new Error('Para enviar emails, entre na aplicação com o código enviado para o Correio Interno.');
+  const token = await tokenParaEnvio();
+  if (!token) throw new Error('Sessão sem acesso ao Correio Interno. Saia e volte a entrar na aplicação.');
   const out = await post<any>('/notify', {
     to: n.para.map((email) => ({ email: email.trim().toLowerCase() })),
     subject: n.assunto,

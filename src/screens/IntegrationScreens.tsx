@@ -31,13 +31,13 @@ import { exportCSV, exportJSON, formatDateTimePT, nowIso } from '../utils/export
  * K21 · Ficheiros ENEB/ENES e interoperabilidade
  * ========================================================================== */
 export const K21InteropScreen: React.FC = () => {
-  const { state, updateState, activeInstitutionId, activeYear, activePhase, logAudit, toast } = useSigen();
+  const { state, updateState, activeInstitutionId, activeYear, activePhase, logAudit, toast, navigate } = useSigen();
   const jobs = state.interopJobs.filter((j) => j.institutionId === activeInstitutionId);
   const lots = state.lots.filter((l) => l.institutionId === activeInstitutionId);
 
   const [form, setForm] = useState({
     destino: 'ENES (Ambiente de Testes)' as InteropJob['destino'],
-    versaoEsquema: 'Esquema Teste v2.0-local (Não oficial)',
+    versaoEsquema: 'Esquema Teste v2.0-local',
     loteRef: lots[0]?.codigoLote || 'LT-2026-635-01',
     ficheiro: 'ENES_Teste_2026_1Fase.csv',
   });
@@ -47,7 +47,7 @@ export const K21InteropScreen: React.FC = () => {
     if (mode === 'exportar') {
       const instResults = state.results.filter((r) => r.institutionId === activeInstitutionId);
       exportJSON(`sigen_teste_${form.loteRef}_${Date.now()}`, {
-        aviso: 'AMBIENTE DE TESTES — NÃO É LAYOUT OFICIAL ENEB/ENES',
+        aviso: 'AMBIENTE DE TESTES ENEB/ENES',
         destino: form.destino,
         versaoEsquema: form.versaoEsquema,
         anoLetivo: activeYear,
@@ -93,6 +93,12 @@ export const K21InteropScreen: React.FC = () => {
   return (
     <div className="space-y-6">
       <ScreenHeader screenId="K21" badgeText="Integração oficial bloqueada até certificação" />
+      <NoticeBar tone="info" title="Módulo ENES/ENEB">
+        Formatos versionados, importação atómica de ficheiros e reconciliação de resultados:{' '}
+        <button type="button" onClick={() => navigate('EN01')} className="font-semibold text-[#087E91] hover:underline">EN01</button>,{' '}
+        <button type="button" onClick={() => navigate('EN02')} className="font-semibold text-[#087E91] hover:underline">EN02</button> e{' '}
+        <button type="button" onClick={() => navigate('EN03')} className="font-semibold text-[#087E91] hover:underline">EN03</button>.
+      </NoticeBar>
 
       <NoticeBar tone="danger" title="Ambiente de Testes · Integração Oficial Bloqueada">
         Layouts oficiais ENEB/ENES, codificações e canais de troca não foram certificados nesta versão.
@@ -111,7 +117,7 @@ export const K21InteropScreen: React.FC = () => {
           </FormField>
           <FormField label="Versão de esquema" required>
             <select value={form.versaoEsquema} onChange={(e) => setForm({ ...form, versaoEsquema: e.target.value })} className={inputClass}>
-              <option>Esquema Teste v2.0-local (Não oficial)</option>
+              <option>Esquema Teste v2.0-local</option>
               <option>Esquema Reconciliação Sandbox v1</option>
             </select>
           </FormField>

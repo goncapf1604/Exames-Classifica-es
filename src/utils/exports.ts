@@ -94,7 +94,7 @@ export function downloadDocumentHtml(doc: PrintableDocument) {
   <h1 style="font-size:22px;margin:20px 0 6px;color:#112A4A;">${doc.title}</h1>
   ${sectionsHtml}
   <footer style="margin-top:36px;padding-top:12px;border-top:1px solid #CBD5E1;font-size:11px;color:#536477;">
-    Aviso institucional: Este documento foi gerado pelo sistema SIGEN Classificações (${doc.origin}). Não substitui documentos oficiais emitidos pelo JNE ou entidades competentes sem validação formal.
+    Aviso institucional: Este documento foi gerado pelo sistema SIGEN Classificações (${doc.origin}).
   </footer>
 </body>
 </html>`;
